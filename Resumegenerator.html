@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professional Resume Generator</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📄</text></svg>">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        
+        :root {
+            --primary-blue: #0A3D62;
+            --skill-blue: #0A3D62;
+            --light-grey: #F3FFfa;
+            --text-dark: #374151;
+            font-family: 'Inter', sans-serif;
+        }
+        
+        body {
+            background-color: var(--light-grey);
+            color: var(--text-dark);
+            min-height: 100vh;
+        }
+        
+        /* Resume Container - Fixed dimensions for PDF */
+        .resume-page {
+            width: 7.5in;
+            min-height: 11in;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            background-color: white;
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            margin: 0 auto;
+            transform-origin: top center;
+        }
+        
+        /* Wrapper for scaling - CRITICAL FIX */
+        .resume-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            width: 100%;
+            overflow: hidden;
+        }
+        
+        .left-column {
+            padding: 30px 20px 30px 30px;
+            border-right: 1px solid #E5E7EB;
+            box-sizing: border-box;
+        }
+        
+        .right-column {
+            padding-bottom: 30px;
+            box-sizing: border-box;
+        }
+        
+        .header-section {
+            background-color: var(--primary-blue);
+            color: white;
+            padding: 40px 30px 30px 30px;
+            margin-left: -1px;
+        }
+        
+        .section-title {
+            color: var(--primary-blue);
+            font-weight: 700;
+            font-size: 1.1rem;
+            margin-top: 20px;
+            margin-bottom: 0.5rem;
+            padding-bottom: 5px;
+            border-bottom: 2px solid var(--primary-blue);
+        }
+        
+        .skill-tag {
+            background-color: var(--skill-blue);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            margin-right: 5px;
+            margin-bottom: 5px;
+            display: inline-block;
+            white-space: nowrap;
+        }
+        
+        .input-panel {
+            top: 1rem;
+            max-height: calc(100vh - 2rem);
+            overflow-y: auto;
+        }
+        
+        .language-bar {
+            height: 6px;
+            border-radius: 3px;
+            background-color: #E5E7EB;
+        }
+        
+        /* Desktop scaling */
+        @media (min-width: 1024px) {
+            .input-panel {
+                position: sticky;
+            }
+            
+            .resume-preview-panel {
+                display: flex;
+                justify-content: center;
+                align-items: flex-start;
+                padding: 1rem;
+                max-height: calc(100vh - 2rem);
+                overflow: hidden;
+            }
+        }
+        
+        /* Mobile scaling - CRITICAL FIX */
+        @media (max-width: 1023px) {
+            .input-panel {
+                position: static;
+                max-height: none;
+                overflow-y: visible;
+            }
+            
+            .resume-preview-panel {
+                display: flex;
+                justify-content: center;
+                padding: 1rem;
+                overflow: hidden;
+                min-height: 60vh;
+            }
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8 flex flex-col items-center">
+    <div class="container-main w-full max-w-7xl mx-auto flex flex-col lg:flex-row gap-8">
+        
+        <!-- Mobile Toggle Buttons -->
+        <div id="mobile-toggles" class="lg:hidden w-full sticky top-0 bg-white z-10 py-2 shadow-lg rounded-xl">
+            <div class="flex">
+                <button id="toggle-edit-btn" class="flex-1 py-3 text-lg font-bold border-b-4 border-primary-blue text-primary-blue transition">
+                    <span data-lucide="edit" class="inline-block w-5 h-5 mr-2 align-text-bottom"></span>
+                    Edit Resume
+                </button>
+                <button id="toggle-preview-btn" class="flex-1 py-3 text-lg font-bold border-b-4 border-transparent text-gray-500 hover:text-primary-blue transition">
+                    <span data-lucide="eye" class="inline-block w-5 h-5 mr-2 align-text-bottom"></span>
+                    Preview PDF
+                </button>
+            </div>
+            <button id="download-btn-mobile" onclick="downloadPDF()" class="w-full mt-3 py-3 bg-red-600 text-white font-bold rounded-lg shadow-md hover:bg-red-700 transition flex items-center justify-center">
+                <span data-lucide="download" class="w-5 h-5 mr-2"></span>
+                Download Resume as PDF
+            </button>
+        </div>
+        
+        <!-- Edit Section -->
+        <div id="edit-section" class="input-panel w-full lg:w-1/3 p-6 bg-white rounded-xl shadow-2xl">
+            <h2 class="text-2xl font-bold mb-4 text-gray-800 hidden lg:block">Resume Data Entry</h2>
+            
+            <button id="download-btn-desktop" onclick="downloadPDF()" class="w-full mt-2 mb-6 py-3 bg-red-600 text-white font-bold rounded-lg shadow-md hover:bg-red-700 transition flex items-center justify-center hidden lg:flex">
+                <span data-lucide="download" class="w-5 h-5 mr-2"></span>
+                Download Resume as PDF
+            </button>
+            
+            <form id="resume-form" class="space-y-6 text-sm">
+                <fieldset class="border border-gray-200 p-3 rounded-md shadow-sm">
+                    <legend class="text-base font-semibold text-gray-700 px-2">1. Personal Info & Summary</legend>
+                    <div class="flex flex-col space-y-2">
+                        <input type="text" id="input-name" placeholder="Full Name (e.g., ELIAS THORNE)" class="w-full p-2 border rounded" data-target="preview-name" required>
+                        <input type="text" id="input-title" placeholder="Professional Title (e.g., Civil Engineer)" class="w-full p-2 border rounded" data-target="preview-title" required>
+                        <textarea id="input-summary" placeholder="Professional Summary (The text in the blue box)" class="w-full p-2 border rounded h-24 resize-none" data-target="preview-summary" required></textarea>
+                        
+                        <label class="block text-xs font-medium text-gray-700 mt-2">Profile Photo (Top Left)</label>
+                        <input type="file" id="input-photo" accept="image/*" class="text-xs w-full p-1 border rounded-md">
+                    </div>
+                </fieldset>
+                
+                <fieldset class="border border-gray-200 p-3 rounded-md shadow-sm">
+                    <legend class="text-base font-semibold text-gray-700 px-2">2. Contact & Languages</legend>
+                    <input type="text" id="input-email" placeholder="Email (e.g., name@gmail.com)" class="w-full p-2 border rounded mb-2" data-target="preview-email">
+                    <input type="text" id="input-phone" placeholder="Phone (e.g., 6005450615)" class="w-full p-2 border rounded mb-2" data-target="preview-phone">
+                    <input type="text" id="input-address" placeholder="Address (e.g., 190014, Hyderpora)" class="w-full p-2 border rounded mb-2" data-target="preview-address">
+                    <input type="text" id="input-linkedin" placeholder="LinkedIn Profile Name" class="w-full p-2 border rounded" data-target="preview-linkedin">
+                    
+                    <label class="block text-sm font-medium text-gray-700 mt-4 border-t pt-3">Languages (Add & Delete)</label>
+                    <div id="languages-container" class="space-y-2"></div>
+                    <button type="button" onclick="addDynamicItem('language')" class="w-full py-1 mt-2 bg-indigo-500 text-white rounded text-xs hover:bg-indigo-600 transition">Add Language</button>
+                </fieldset>
+                
+                <fieldset class="border border-gray-200 p-3 rounded-md shadow-sm">
+                    <legend class="text-base font-semibold text-gray-700 px-2">3. Skills & Certificates</legend>
+                    <div id="skills-container" class="space-y-4"></div>
+                    <button type="button" onclick="addDynamicItem('skill-group')" class="w-full py-2 mt-4 bg-green-600 text-white rounded text-sm hover:bg-green-700 transition">Add Skill Group</button>
+                    
+                    <label class="block text-sm font-medium text-gray-700 mt-4 border-t pt-3">Certificates (Simple List)</label>
+                    <div id="certificates-container" class="space-y-2"></div>
+                    <button type="button" onclick="addDynamicItem('certificate')" class="w-full py-1 mt-2 bg-teal-500 text-white rounded text-xs hover:bg-teal-600 transition">Add Certificate</button>
+                </fieldset>
+                
+                <fieldset class="border border-gray-200 p-3 rounded-md shadow-sm">
+                    <legend class="text-base font-semibold text-gray-700 px-2">4. Work Experience</legend>
+                    <div id="experience-container" class="space-y-4"></div>
+                    <button type="button" onclick="addDynamicItem('experience')" class="w-full py-2 mt-2 bg-red-500 text-white rounded text-sm hover:bg-red-600 transition">Add Job/Internship</button>
+                </fieldset>
+                
+                <fieldset class="border border-gray-200 p-3 rounded-md shadow-sm">
+                    <legend class="text-base font-semibold text-gray-700 px-2">5. Education & Achievements</legend>
+                    <div id="education-container" class="space-y-4"></div>
+                    <button type="button" onclick="addDynamicItem('education')" class="w-full py-2 mt-2 bg-purple-500 text-white rounded text-sm hover:bg-purple-600 transition">Add Education</button>
+                    
+                    <label class="block text-sm font-medium text-gray-700 mt-4 border-t pt-3">Achievements (Structured)</label>
+                    <div id="achievements-container" class="space-y-4"></div>
+                    <button type="button" onclick="addDynamicItem('achievement')" class="w-full py-2 mt-2 bg-yellow-600 text-white rounded text-sm hover:bg-yellow-700 transition">Add Achievement</button>
+                </fieldset>
+                
+                <fieldset class="border border-gray-200 p-3 rounded-md shadow-sm">
+                    <legend class="text-base font-semibold text-gray-700 px-2">6. References</legend>
+                    <div id="references-container" class="space-y-4"></div>
+                    <button type="button" onclick="addDynamicItem('reference')" class="w-full py-2 mt-2 bg-gray-500 text-white rounded text-sm hover:bg-gray-600 transition">Add Reference</button>
+                </fieldset>
+            </form>
+        </div>
+
+        <!-- Preview Section with Scaling Wrapper -->
+        <div id="preview-section" class="resume-preview-panel w-full lg:w-2/3 hidden lg:block">
+            <div class="resume-wrapper">
+                <div id="resume-preview" class="resume-page">
+                    <div class="left-column">
+                        <div class="mb-8">
+                            <div class="w-48 h-48 mx-auto mb-4 border-4 border-gray-300 rounded-full overflow-hidden flex items-center justify-center text-center text-xs text-gray-500 bg-gray-100">
+                                <img id="preview-photo" src="https://placehold.co/192x192/E0E0E0/808080?text=Upload%20Photo" alt="Profile" class="w-full h-full object-cover">
+                            </div>
+                            
+                            <div class="mt-8 space-y-3">
+                                <div class="flex items-start">
+                                    <span data-lucide="mail" class="w-4 h-4 mr-3 text-gray-500 flex-shrink-0"></span>
+                                    <p class="text-sm break-words"><span id="preview-email">elias.thorne@synthmail.com</span></p>
+                                </div>
+                                <div class="flex items-start">
+                                    <span data-lucide="phone" class="w-4 h-4 mr-3 text-gray-500 flex-shrink-0"></span>
+                                    <p class="text-sm"><span id="preview-phone">555-010-0198</span></p>
+                                </div>
+                                <div class="flex items-start">
+                                    <span data-lucide="map-pin" class="w-4 h-4 mr-3 text-gray-500 flex-shrink-0"></span>
+                                    <p class="text-sm"><span id="preview-address">789 Nova Lane, New Arcadia</span></p>
+                                </div>
+                                <div class="flex items-start">
+                                    <span data-lucide="linkedin" class="w-4 h-4 mr-3 text-gray-500 flex-shrink-0"></span>
+                                    <p class="text-sm"><span id="preview-linkedin">elias-thorne-civil</span></p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-8">
+                            <h3 class="section-title">SKILLS</h3>
+                            <div id="preview-skills-container" class="pt-3 space-y-4"></div>
+                        </div>
+                        
+                        <div class="mt-8">
+                            <h3 class="section-title">CERTIFICATES</h3>
+                            <ul id="preview-certificates-list" class="pt-3 list-none text-sm space-y-1 pl-0"></ul>
+                        </div>
+                        
+                        <div class="mt-8">
+                            <h3 class="section-title">LANGUAGES</h3>
+                            <div id="preview-languages-container" class="pt-3 space-y-3 text-sm"></div>
+                        </div>
+                        
+                        <div class="mt-8">
+                            <h3 class="section-title">REFERENCES</h3>
+                            <div id="preview-references-container" class="pt-3 space-y-4 text-sm"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="right-column">
+                        <div class="header-section">
+                            <h1 class="text-4xl font-extrabold tracking-wider" id="preview-name">ELIAS THORNE</h1>
+                            <h2 class="text-xl font-light mt-1 mb-6" id="preview-title">Civil Engineer</h2>
+                            <p class="text-sm font-light leading-relaxed" id="preview-summary">
+                                I am a dedicated Civil Engineer with strong expertise in structural design, analysis, and project execution, proficient in industry-standard software such as AutoCAD, STAAD Pro, SAP2000, Revit, 3DS Max, RCDC, and ETABS. Committed to teamwork, innovation, and continuous learning.
+                            </p>
+                        </div>
+                        
+                        <div class="p-8 pt-6">
+                            <h3 class="section-title">WORK EXPERIENCE</h3>
+                            <div id="preview-experience-container" class="mt-4 space-y-6"></div>
+                        </div>
+                        
+                        <div class="px-8 pt-4">
+                            <h3 class="section-title">ACHIEVEMENTS</h3>
+                            <div id="preview-achievements-container" class="mt-4 space-y-6"></div>
+                        </div>
+                        
+                        <div class="px-8 pt-4">
+                            <h3 class="section-title">EDUCATION</h3>
+                            <div id="preview-education-container" class="mt-4 space-y-6"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const generateUUID = () => Date.now().toString(36) + Math.random().toString(36).substring(2);
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+
+            const editSection = document.getElementById('edit-section');
+            const previewSection = document.getElementById('preview-section');
+            const toggleEditBtn = document.getElementById('toggle-edit-btn');
+            const togglePreviewBtn = document.getElementById('toggle-preview-btn');
+            const downloadBtnMobile = document.getElementById('download-btn-mobile');
+            const mobileToggles = document.getElementById('mobile-toggles');
+
+            function showEdit() {
+                editSection.classList.remove('hidden');
+                previewSection.classList.add('hidden');
+                toggleEditBtn.classList.add('border-primary-blue', 'text-primary-blue');
+                toggleEditBtn.classList.remove('border-transparent', 'text-gray-500');
+                togglePreviewBtn.classList.add('border-transparent', 'text-gray-500');
+                togglePreviewBtn.classList.remove('border-primary-blue', 'text-primary-blue');
+                downloadBtnMobile.classList.add('hidden');
+                mobileToggles.classList.remove('shadow-lg');
+            }
+
+            function showPreview() {
+                editSection.classList.add('hidden');
+                previewSection.classList.remove('hidden');
+                togglePreviewBtn.classList.add('border-primary-blue', 'text-primary-blue');
+                togglePreviewBtn.classList.remove('border-transparent', 'text-gray-500');
+                toggleEditBtn.classList.add('border-transparent', 'text-gray-500');
+                toggleEditBtn.classList.remove('border-primary-blue', 'text-primary-blue');
+                downloadBtnMobile.classList.remove('hidden');
+                mobileToggles.classList.add('shadow-lg');
+                setTimeout(scaleResumePreview, 100);
+            }
+
+            toggleEditBtn.addEventListener('click', showEdit);
+            togglePreviewBtn.addEventListener('click', showPreview);
+
+            if (window.innerWidth < 1024) {
+                showEdit();
+            } else {
+                editSection.classList.remove('hidden');
+                previewSection.classList.remove('hidden');
+            }
+
+            document.querySelectorAll('#resume-form input[data-target], #resume-form textarea[data-target]').forEach(input => {
+                input.addEventListener('input', updateStaticPreview);
+            });
+            
+            document.getElementById('input-photo').addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        document.getElementById('preview-photo').src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+            
+            loadInitialData();
+            updateAllPreviews();
+            
+            setTimeout(() => {
+                scaleResumePreview();
+                window.addEventListener('resize', scaleResumePreview);
+            }, 100);
+        });
+        
+        function scaleResumePreview() {
+            const resumePage = document.getElementById('resume-preview');
+            const previewPanel = document.getElementById('preview-section');
+            
+            if (!resumePage || !previewPanel || previewPanel.classList.contains('hidden')) return;
+            
+            const resumeWidth = 7.5 * 96;
+            const resumeHeight = resumePage.offsetHeight;
+            
+            const containerWidth = previewPanel.offsetWidth - 32;
+            const containerHeight = previewPanel.offsetHeight - 32;
+            
+            const scaleX = containerWidth / resumeWidth;
+            const scaleY = containerHeight / resumeHeight;
+            const scale = Math.min(scaleX, scaleY, 1);
+            
+            resumePage.style.transform = `scale(${scale})`;
+            
+            const scaledHeight = resumeHeight * scale;
+            previewPanel.querySelector('.resume-wrapper').style.minHeight = `${scaledHeight}px`;
+        }
+        
+        function updateStaticPreview(e) {
+            const input = e ? e.target : null;
+            
+            if (input && input.hasAttribute('data-target')) {
+                const targetId = input.getAttribute('data-target');
+                const targetElement = document.getElementById(targetId);
+                if (targetElement) {
+                    targetElement.textContent = input.value || input.placeholder;
+                }
+            } else if (!input) {
+                document.querySelectorAll('#resume-form input[data-target], #resume-form textarea[data-target]').forEach(el => {
+                    const targetId = el.getAttribute('data-target');
+                    const targetElement = document.getElementById(targetId);
+                    if (targetElement) {
+                        targetElement.textContent = el.value || el.placeholder;
+                    }
+                });
+            }
+        }
+        
+        function updateAllPreviews() {
+            updateStaticPreview();
+            updateSkillsPreview();
+            updateCertificatesPreview();
+            updateLanguagesPreview();
+            updateExperiencePreview();
+            updateEducationPreview();
+            updateAchievementsPreview();
+            updateReferencesPreview();
+            setTimeout(scaleResumePreview, 50);
+        }
+        
+        function addDynamicItem(type) {
+            const uuid = generateUUID();
+            let html = '';
+            
+            switch(type) {
+                case 'language':
+                    html = `
+                        <div class="flex gap-2 items-center border-b pb-2" data-lang-id="${uuid}">
+                            <input type="text" placeholder="Language Name" class="flex-1 p-1 border rounded text-xs" data-lang-name="${uuid}">
+                            <input type="number" min="0" max="100" placeholder="%" class="w-16 p-1 border rounded text-xs" data-lang-level="${uuid}">
+                            <button type="button" onclick="removeDynamicItem('${uuid}', 'language')" class="px-2 py-1 bg-red-500 text-white rounded text-xs">×</button>
+                        </div>`;
+                    document.getElementById('languages-container').insertAdjacentHTML('beforeend', html);
+                    document.querySelector(`[data-lang-name="${uuid}"]`).addEventListener('input', updateLanguagesPreview);
+                    document.querySelector(`[data-lang-level="${uuid}"]`).addEventListener('input', updateLanguagesPreview);
+                    break;
+                    
+                case 'skill-group':
+                    html = `
+                        <div class="border p-2 rounded" data-skill-group-id="${uuid}">
+                            <input type="text" placeholder="Skill Category (e.g., Programming)" class="w-full p-1 border rounded mb-2 text-xs font-semibold" data-skill-category="${uuid}">
+                            <textarea placeholder="Skills (Comma-separated)" class="w-full p-1 border rounded text-xs h-16" data-skill-items="${uuid}"></textarea>
+                            <button type="button" onclick="removeDynamicItem('${uuid}', 'skill-group')" class="w-full mt-2 py-1 bg-red-500 text-white rounded text-xs">Remove Skill Group</button>
+                        </div>`;
+                    document.getElementById('skills-container').insertAdjacentHTML('beforeend', html);
+                    document.querySelector(`[data-skill-category="${uuid}"]`).addEventListener('input', updateSkillsPreview);
+                    document.querySelector(`[data-skill-items="${uuid}"]`).addEventListener('input', updateSkillsPreview);
+                    break;
+                    
+                case 'certificate':
+                    html = `
+                        <div class="flex gap-2 items-center" data-cert-id="${uuid}">
+                            <input type="text" placeholder="Certificate Name" class="flex-1 p-1 border rounded text-xs" data-cert-name="${uuid}">
+                            <button type="button" onclick="removeDynamicItem('${uuid}', 'certificate')" class="px-2 py-1 bg-red-500 text-white rounded text-xs">×</button>
+                        </div>`;
+                    document.getElementById('certificates-container').insertAdjacentHTML('beforeend', html);
+                    document.querySelector(`[data-cert-name="${uuid}"]`).addEventListener('input', updateCertificatesPreview);
+                    break;
+                    
+                case 'experience':
+                    html = `
+                        <div class="border p-3 rounded bg-gray-50" data-exp-id="${uuid}">
+                            <input type="text" placeholder="Job Title" class="w-full p-1 border rounded mb-2 text-xs" data-exp-title="${uuid}">
+                            <input type="text" placeholder="Company Name" class="w-full p-1 border rounded mb-2 text-xs" data-exp-company="${uuid}">
+                            <input type="text" placeholder="Duration" class="w-full p-1 border rounded mb-2 text-xs" data-exp-duration="${uuid}">
+                            <textarea placeholder="Description" class="w-full p-1 border rounded text-xs h-20" data-exp-desc="${uuid}"></textarea>
+                            <button type="button" onclick="removeDynamicItem('${uuid}', 'experience')" class="w-full mt-2 py-1 bg-red-500 text-white rounded text-xs">Remove Experience</button>
+                        </div>`;
+                    document.getElementById('experience-container').insertAdjacentHTML('beforeend', html);
+                    ['title', 'company', 'duration', 'desc'].forEach(field => {
+                        document.querySelector(`[data-exp-${field}="${uuid}"]`).addEventListener('input', updateExperiencePreview);
+                    });
+                    break;
+                    
+                case 'achievement':
+                    html = `
+                        <div class="border p-3 rounded bg-gray-50" data-ach-id="${uuid}">
+                            <input type="text" placeholder="Achievement Title" class="w-full p-1 border rounded mb-2 text-xs" data-ach-title="${uuid}">
+                            <input type="text" placeholder="Date/Year" class="w-full p-1 border rounded mb-2 text-xs" data-ach-date="${uuid}">
+                            <textarea placeholder="Description" class="w-full p-1 border rounded text-xs h-16" data-ach-desc="${uuid}"></textarea>
+                            <button type="button" onclick="removeDynamicItem('${uuid}', 'achievement')" class="w-full mt-2 py-1 bg-red-500 text-white rounded text-xs">Remove Achievement</button>
+                        </div>`;
+                    document.getElementById('achievements-container').insertAdjacentHTML('beforeend', html);
+                    ['title', 'date', 'desc'].forEach(field => {
+                        document.querySelector(`[data-ach-${field}="${uuid}"]`).addEventListener('input', updateAchievementsPreview);
+                    });
+                    break;
+                    
+                case 'education':
+                    html = `
+                        <div class="border p-3 rounded bg-gray-50" data-edu-id="${uuid}">
+                            <input type="text" placeholder="Degree/Qualification" class="w-full p-1 border rounded mb-2 text-xs" data-edu-degree="${uuid}">
+                            <input type="text" placeholder="Institution Name" class="w-full p-1 border rounded mb-2 text-xs" data-edu-institution="${uuid}">
+                            <input type="text" placeholder="Duration" class="w-full p-1 border rounded mb-2 text-xs" data-edu-duration="${uuid}">
+                            <input type="text" placeholder="GPA/Grade (optional)" class="w-full p-1 border rounded text-xs" data-edu-gpa="${uuid}">
+                            <button type="button" onclick="removeDynamicItem('${uuid}', 'education')" class="w-full mt-2 py-1 bg-red-500 text-white rounded text-xs">Remove Education</button>
+                        </div>`;
+                    document.getElementById('education-container').insertAdjacentHTML('beforeend', html);
+                    ['degree', 'institution', 'duration', 'gpa'].forEach(field => {
+                        document.querySelector(`[data-edu-${field}="${uuid}"]`).addEventListener('input', updateEducationPreview);
+                    });
+                    break;
+                    
+                case 'reference':
+                    html = `
+                        <div class="border p-3 rounded bg-gray-50" data-ref-id="${uuid}">
+                            <input type="text" placeholder="Reference Name" class="w-full p-1 border rounded mb-2 text-xs" data-ref-name="${uuid}">
+                            <input type="text" placeholder="Position/Title" class="w-full p-1 border rounded mb-2 text-xs" data-ref-position="${uuid}">
+                            <input type="text" placeholder="Contact Info" class="w-full p-1 border rounded text-xs" data-ref-contact="${uuid}">
+                            <button type="button" onclick="removeDynamicItem('${uuid}', 'reference')" class="w-full mt-2 py-1 bg-red-500 text-white rounded text-xs">Remove Reference</button>
+                        </div>`;
+                    document.getElementById('references-container').insertAdjacentHTML('beforeend', html);
+                    ['name', 'position', 'contact'].forEach(field => {
+                        document.querySelector(`[data-ref-${field}="${uuid}"]`).addEventListener('input', updateReferencesPreview);
+                    });
+                    break;
+            }
+            updateAllPreviews();
+        }
+        
+        function removeDynamicItem(uuid, type) {
+            const selectors = {
+                'language': `[data-lang-id="${uuid}"]`,
+                'skill-group': `[data-skill-group-id="${uuid}"]`,
+                'certificate': `[data-cert-id="${uuid}"]`,
+                'experience': `[data-exp-id="${uuid}"]`,
+                'achievement': `[data-ach-id="${uuid}"]`,
+                'education': `[data-edu-id="${uuid}"]`,
+                'reference': `[data-ref-id="${uuid}"]`
+            };
+            
+            const element = document.querySelector(selectors[type]);
+            if (element) {
+                element.remove();
+                updateAllPreviews();
+            }
+        }
+        
+        function updateSkillsPreview() {
+            const container = document.getElementById('preview-skills-container');
+            container.innerHTML = '';
+            
+            document.querySelectorAll('[data-skill-group-id]').forEach(group => {
+                const uuid = group.getAttribute('data-skill-group-id');
+                const category = document.querySelector(`[data-skill-category="${uuid}"]`)?.value || '';
+                const items = document.querySelector(`[data-skill-items="${uuid}"]`)?.value || '';
+                
+                if (category || items) {
+                    const div = document.createElement('div');
+                    div.innerHTML = `
+                        <p class="font-semibold text-xs mb-1">${category || 'Category'}</p>
+                        <div class="flex flex-wrap gap-1">
+                            ${items.split(',').map(skill => skill.trim()).filter(s => s).map(skill => 
+                                `<span class="skill-tag">${skill}</span>`
+                            ).join('')}
+                        </div>
+                    `;
+                    container.appendChild(div);
+                }
+            });
+        }
+        
+        function updateCertificatesPreview() {
+            const list = document.getElementById('preview-certificates-list');
+            list.innerHTML = '';
+            
+            document.querySelectorAll('[data-cert-id]').forEach(cert => {
+                const uuid = cert.getAttribute('data-cert-id');
+                const name = document.querySelector(`[data-cert-name="${uuid}"]`)?.value || '';
+                
+                if (name) {
+                    const li = document.createElement('li');
+                    li.textContent = `• ${name}`;
+                    list.appendChild(li);
+                }
+            });
+        }
+        
+        function updateLanguagesPreview() {
+            const container = document.getElementById('preview-languages-container');
+            container.innerHTML = '';
+            
+            document.querySelectorAll('[data-lang-id]').forEach(lang => {
+                const uuid = lang.getAttribute('data-lang-id');
+                const name = document.querySelector(`[data-lang-name="${uuid}"]`)?.value || '';
+                const level = document.querySelector(`[data-lang-level="${uuid}"]`)?.value || 0;
+                
+                if (name) {
+                    const div = document.createElement('div');
+                    div.innerHTML = `
+                        <p class="font-medium">${name}</p>
+                        <div class="language-bar mt-1">
+                            <div style="width: ${level}%; height: 100%; background-color: var(--primary-blue); border-radius: 3px;"></div>
+                        </div>
+                    `;
+                    container.appendChild(div);
+                }
+            });
+        }
+        
+        function updateExperiencePreview() {
+            const container = document.getElementById('preview-experience-container');
+            container.innerHTML = '';
+            
+            document.querySelectorAll('[data-exp-id]').forEach(exp => {
+                const uuid = exp.getAttribute('data-exp-id');
+                const title = document.querySelector(`[data-exp-title="${uuid}"]`)?.value || '';
+                const company = document.querySelector(`[data-exp-company="${uuid}"]`)?.value || '';
+                const duration = document.querySelector(`[data-exp-duration="${uuid}"]`)?.value || '';
+                const desc = document.querySelector(`[data-exp-desc="${uuid}"]`)?.value || '';
+                
+                if (title || company) {
+                    const div = document.createElement('div');
+                    div.innerHTML = `
+                        <h4 class="font-bold text-base">${title || 'Job Title'}</h4>
+                        <p class="text-sm text-gray-600 mt-1">${company || 'Company'} | ${duration || 'Duration'}</p>
+                        <p class="text-sm mt-2 leading-relaxed">${desc}</p>
+                    `;
+                    container.appendChild(div);
+                }
+            });
+        }
+        
+        function updateEducationPreview() {
+            const container = document.getElementById('preview-education-container');
+            container.innerHTML = '';
+            
+            document.querySelectorAll('[data-edu-id]').forEach(edu => {
+                const uuid = edu.getAttribute('data-edu-id');
+                const degree = document.querySelector(`[data-edu-degree="${uuid}"]`)?.value || '';
+                const institution = document.querySelector(`[data-edu-institution="${uuid}"]`)?.value || '';
+                const duration = document.querySelector(`[data-edu-duration="${uuid}"]`)?.value || '';
+                const gpa = document.querySelector(`[data-edu-gpa="${uuid}"]`)?.value || '';
+                
+                if (degree || institution) {
+                    const div = document.createElement('div');
+                    div.innerHTML = `
+                        <h4 class="font-bold text-base">${degree || 'Degree'}</h4>
+                        <p class="text-sm text-gray-600 mt-1">${institution || 'Institution'} | ${duration || 'Year'}</p>
+                        ${gpa ? `<p class="text-sm mt-2">${gpa}</p>` : ''}
+                    `;
+                    container.appendChild(div);
+                }
+            });
+        }
+        
+        function updateAchievementsPreview() {
+            const container = document.getElementById('preview-achievements-container');
+            container.innerHTML = '';
+            
+            document.querySelectorAll('[data-ach-id]').forEach(ach => {
+                const uuid = ach.getAttribute('data-ach-id');
+                const title = document.querySelector(`[data-ach-title="${uuid}"]`)?.value || '';
+                const date = document.querySelector(`[data-ach-date="${uuid}"]`)?.value || '';
+                const desc = document.querySelector(`[data-ach-desc="${uuid}"]`)?.value || '';
+                
+                if (title) {
+                    const div = document.createElement('div');
+                    div.innerHTML = `
+                        <h4 class="font-bold text-base">${title}</h4>
+                        <p class="text-sm text-gray-600 mt-1">${date}</p>
+                        <p class="text-sm mt-2 leading-relaxed">${desc}</p>
+                    `;
+                    container.appendChild(div);
+                }
+            });
+        }
+        
+        function updateReferencesPreview() {
+            const container = document.getElementById('preview-references-container');
+            container.innerHTML = '';
+            
+            document.querySelectorAll('[data-ref-id]').forEach(ref => {
+                const uuid = ref.getAttribute('data-ref-id');
+                const name = document.querySelector(`[data-ref-name="${uuid}"]`)?.value || '';
+                const position = document.querySelector(`[data-ref-position="${uuid}"]`)?.value || '';
+                const contact = document.querySelector(`[data-ref-contact="${uuid}"]`)?.value || '';
+                
+                if (name) {
+                    const div = document.createElement('div');
+                    div.innerHTML = `
+                        <p class="font-semibold">${name}</p>
+                        <p class="text-xs text-gray-600 mt-1">${position}</p>
+                        <p class="text-xs text-gray-600">${contact}</p>
+                    `;
+                    container.appendChild(div);
+                }
+            });
+        }
+        
+        function loadInitialData() {
+            document.getElementById('input-name').value = 'ELIAS THORNE';
+            document.getElementById('input-title').value = 'Civil Engineer';
+            document.getElementById('input-summary').value = 'I am a dedicated Civil Engineer with strong expertise in structural design, analysis, and project execution, proficient in industry-standard software such as AutoCAD, STAAD Pro, SAP2000, Revit, 3DS Max, RCDC, and ETABS. Committed to teamwork, innovation, and continuous learning.';
+            document.getElementById('input-email').value = 'elias.thorne@synthmail.com';
+            document.getElementById('input-phone').value = '555-010-0198';
+            document.getElementById('input-address').value = '789 Nova Lane, New Arcadia';
+            document.getElementById('input-linkedin').value = 'elias-thorne-civil';
+            
+            const skill1 = generateUUID();
+            const skill2 = generateUUID();
+            const skill3 = generateUUID();
+            document.getElementById('skills-container').innerHTML = `
+                <div class="border p-2 rounded" data-skill-group-id="${skill1}">
+                    <input type="text" placeholder="Skill Category (e.g., Programming)" value="Engineering Software" class="w-full p-1 border rounded mb-2 text-xs font-semibold" data-skill-category="${skill1}">
+                    <textarea placeholder="Skills (Comma-separated)" class="w-full p-1 border rounded text-xs h-16" data-skill-items="${skill1}">AutoCAD, STAAD Pro, SAP2000, Revit, ETABS, RCDC, 3DS Max</textarea>
+                    <button type="button" onclick="removeDynamicItem('${skill1}', 'skill-group')" class="w-full mt-2 py-1 bg-red-500 text-white rounded text-xs">Remove Skill Group</button>
+                </div>
+                <div class="border p-2 rounded" data-skill-group-id="${skill2}">
+                    <input type="text" placeholder="Skill Category (e.g., Programming)" value="Technical Skills" class="w-full p-1 border rounded mb-2 text-xs font-semibold" data-skill-category="${skill2}">
+                    <textarea placeholder="Skills (Comma-separated)" class="w-full p-1 border rounded text-xs h-16" data-skill-items="${skill2}">Structural Analysis, Design Optimization, BIM Integration, Site Supervision</textarea>
+                    <button type="button" onclick="removeDynamicItem('${skill2}', 'skill-group')" class="w-full mt-2 py-1 bg-red-500 text-white rounded text-xs">Remove Skill Group</button>
+                </div>
+                <div class="border p-2 rounded" data-skill-group-id="${skill3}">
+                    <input type="text" placeholder="Skill Category (e.g., Programming)" value="Soft Skills" class="w-full p-1 border rounded mb-2 text-xs font-semibold" data-skill-category="${skill3}">
+                    <textarea placeholder="Skills (Comma-separated)" class="w-full p-1 border rounded text-xs h-16" data-skill-items="${skill3}">Teamwork, Problem Solving, Communication, Project Management</textarea>
+                    <button type="button" onclick="removeDynamicItem('${skill3}', 'skill-group')" class="w-full mt-2 py-1 bg-red-500 text-white rounded text-xs">Remove Skill Group</button>
+                </div>`;
+            document.querySelector(`[data-skill-category="${skill1}"]`).addEventListener('input', updateSkillsPreview);
+            document.querySelector(`[data-skill-items="${skill1}"]`).addEventListener('input', updateSkillsPreview);
+            document.querySelector(`[data-skill-category="${skill2}"]`).addEventListener('input', updateSkillsPreview);
+            document.querySelector(`[data-skill-items="${skill2}"]`).addEventListener('input', updateSkillsPreview);
+            document.querySelector(`[data-skill-category="${skill3}"]`).addEventListener('input', updateSkillsPreview);
+            document.querySelector(`[data-skill-items="${skill3}"]`).addEventListener('input', updateSkillsPreview);
+            
+            const cert1 = generateUUID();
+            const cert2 = generateUUID();
+            const cert3 = generateUUID();
+            document.getElementById('certificates-container').innerHTML = `
+                <div class="flex gap-2 items-center" data-cert-id="${cert1}">
+                    <input type="text" placeholder="Certificate Name" value="LEED Green Associate" class="flex-1 p-1 border rounded text-xs" data-cert-name="${cert1}">
+                    <button type="button" onclick="removeDynamicItem('${cert1}', 'certificate')" class="px-2 py-1 bg-red-500 text-white rounded text-xs">×</button>
+                </div>
+                <div class="flex gap-2 items-center" data-cert-id="${cert2}">
+                    <input type="text" placeholder="Certificate Name" value="Earthquake Design Professional (EDP)" class="flex-1 p-1 border rounded text-xs" data-cert-name="${cert2}">
+                    <button type="button" onclick="removeDynamicItem('${cert2}', 'certificate')" class="px-2 py-1 bg-red-500 text-white rounded text-xs">×</button>
+                </div>
+                <div class="flex gap-2 items-center" data-cert-id="${cert3}">
+                    <input type="text" placeholder="Certificate Name" value="Project Management (PMP)" class="flex-1 p-1 border rounded text-xs" data-cert-name="${cert3}">
+                    <button type="button" onclick="removeDynamicItem('${cert3}', 'certificate')" class="px-2 py-1 bg-red-500 text-white rounded text-xs">×</button>
+                </div>`;
+            document.querySelector(`[data-cert-name="${cert1}"]`).addEventListener('input', updateCertificatesPreview);
+            document.querySelector(`[data-cert-name="${cert2}"]`).addEventListener('input', updateCertificatesPreview);
+            document.querySelector(`[data-cert-name="${cert3}"]`).addEventListener('input', updateCertificatesPreview);
+            
+            const lang1 = generateUUID();
+            const lang2 = generateUUID();
+            const lang3 = generateUUID();
+            document.getElementById('languages-container').innerHTML = `
+                <div class="flex gap-2 items-center border-b pb-2" data-lang-id="${lang1}">
+                    <input type="text" placeholder="Language Name" value="English" class="flex-1 p-1 border rounded text-xs" data-lang-name="${lang1}">
+                    <input type="number" min="0" max="100" placeholder="%" value="95" class="w-16 p-1 border rounded text-xs" data-lang-level="${lang1}">
+                    <button type="button" onclick="removeDynamicItem('${lang1}', 'language')" class="px-2 py-1 bg-red-500 text-white rounded text-xs">×</button>
+                </div>
+                <div class="flex gap-2 items-center border-b pb-2" data-lang-id="${lang2}">
+                    <input type="text" placeholder="Language Name" value="French" class="flex-1 p-1 border rounded text-xs" data-lang-name="${lang2}">
+                    <input type="number" min="0" max="100" placeholder="%" value="70" class="w-16 p-1 border rounded text-xs" data-lang-level="${lang2}">
+                    <button type="button" onclick="removeDynamicItem('${lang2}', 'language')" class="px-2 py-1 bg-red-500 text-white rounded text-xs">×</button>
+                </div>
+                <div class="flex gap-2 items-center border-b pb-2" data-lang-id="${lang3}">
+                    <input type="text" placeholder="Language Name" value="Spanish" class="flex-1 p-1 border rounded text-xs" data-lang-name="${lang3}">
+                    <input type="number" min="0" max="100" placeholder="%" value="30" class="w-16 p-1 border rounded text-xs" data-lang-level="${lang3}">
+                    <button type="button" onclick="removeDynamicItem('${lang3}', 'language')" class="px-2 py-1 bg-red-500 text-white rounded text-xs">×</button>
+                </div>`;
+            document.querySelector(`[data-lang-name="${lang1}"]`).addEventListener('input', updateLanguagesPreview);
+            document.querySelector(`[data-lang-level="${lang1}"]`).addEventListener('input', updateLanguagesPreview);
+            document.querySelector(`[data-lang-name="${lang2}"]`).addEventListener('input', updateLanguagesPreview);
+            document.querySelector(`[data-lang-level="${lang2}"]`).addEventListener('input', updateLanguagesPreview);
+            document.querySelector(`[data-lang-name="${lang3}"]`).addEventListener('input', updateLanguagesPreview);
+            document.querySelector(`[data-lang-level="${lang3}"]`).addEventListener('input', updateLanguagesPreview);
+            
+            const exp1 = generateUUID();
+            const exp2 = generateUUID();
+            document.getElementById('experience-container').innerHTML = `
+                <div class="border p-3 rounded bg-gray-50" data-exp-id="${exp1}">
+                    <input type="text" placeholder="Job Title" value="Junior Structural Designer" class="w-full p-1 border rounded mb-2 text-xs" data-exp-title="${exp1}">
+                    <input type="text" placeholder="Company Name" value="Global Structures Ltd." class="w-full p-1 border rounded mb-2 text-xs" data-exp-company="${exp1}">
+                    <input type="text" placeholder="Duration" value="Jan 2024 - Present" class="w-full p-1 border rounded mb-2 text-xs" data-exp-duration="${exp1}">
+                    <textarea placeholder="Description" class="w-full p-1 border rounded text-xs h-20" data-exp-desc="${exp1}">Assisted in the design and analysis of five high-rise residential projects using ETABS and STAAD Pro.
+Optimized material use by 15% through BIM-driven design process.</textarea>
+                    <button type="button" onclick="removeDynamicItem('${exp1}', 'experience')" class="w-full mt-2 py-1 bg-red-500 text-white rounded text-xs">Remove Experience</button>
+                </div>
+                <div class="border p-3 rounded bg-gray-50" data-exp-id="${exp2}">
+                    <input type="text" placeholder="Job Title" value="Summer Intern (Site Supervision)" class="w-full p-1 border rounded mb-2 text-xs" data-exp-title="${exp2}">
+                    <input type="text" placeholder="Company Name" value="Arcadian Builders" class="w-full p-1 border rounded mb-2 text-xs" data-exp-company="${exp2}">
+                    <input type="text" placeholder="Duration" value="June 2023 - Aug 2023" class="w-full p-1 border rounded mb-2 text-xs" data-exp-duration="${exp2}">
+                    <textarea placeholder="Description" class="w-full p-1 border rounded text-xs h-20" data-exp-desc="${exp2}">Monitored on-site construction progress and ensured compliance with safety protocols on a large commercial complex site. Managed RFI documentation.</textarea>
+                    <button type="button" onclick="removeDynamicItem('${exp2}', 'experience')" class="w-full mt-2 py-1 bg-red-500 text-white rounded text-xs">Remove Experience</button>
+                </div>`;
+            ['title', 'company', 'duration', 'desc'].forEach(field => {
+                document.querySelector(`[data-exp-${field}="${exp1}"]`).addEventListener('input', updateExperiencePreview);
+                document.querySelector(`[data-exp-${field}="${exp2}"]`).addEventListener('input', updateExperiencePreview);
+            });
+            
+            const ach1 = generateUUID();
+            const ach2 = generateUUID();
+            document.getElementById('achievements-container').innerHTML = `
+                <div class="border p-3 rounded bg-gray-50" data-ach-id="${ach1}">
+                    <input type="text" placeholder="Achievement Title" value="Best Project Design Award" class="w-full p-1 border rounded mb-2 text-xs" data-ach-title="${ach1}">
+                    <input type="text" placeholder="Date/Year" value="2024" class="w-full p-1 border rounded mb-2 text-xs" data-ach-date="${ach1}">
+                    <textarea placeholder="Description" class="w-full p-1 border rounded text-xs h-16" data-ach-desc="${ach1}">University-Level Competition - Led a team of four to design a sustainable bridge structure, winning first prize for innovative engineering design.</textarea>
+                    <button type="button" onclick="removeDynamicItem('${ach1}', 'achievement')" class="w-full mt-2 py-1 bg-red-500 text-white rounded text-xs">Remove Achievement</button>
+                </div>
+                <div class="border p-3 rounded bg-gray-50" data-ach-id="${ach2}">
+                    <input type="text" placeholder="Achievement Title" value="Scholarship Recipient" class="w-full p-1 border rounded mb-2 text-xs" data-ach-title="${ach2}">
+                    <input type="text" placeholder="Date/Year" value="2020-2023" class="w-full p-1 border rounded mb-2 text-xs" data-ach-date="${ach2}">
+                    <textarea placeholder="Description" class="w-full p-1 border rounded text-xs h-16" data-ach-desc="${ach2}">Quantum Dynamics University - Awarded a merit-based scholarship for maintaining a GPA above 8.0 throughout the undergraduate program.</textarea>
+                    <button type="button" onclick="removeDynamicItem('${ach2}', 'achievement')" class="w-full mt-2 py-1 bg-red-500 text-white rounded text-xs">Remove Achievement</button>
+                </div>`;
+            ['title', 'date', 'desc'].forEach(field => {
+                document.querySelector(`[data-ach-${field}="${ach1}"]`).addEventListener('input', updateAchievementsPreview);
+                document.querySelector(`[data-ach-${field}="${ach2}"]`).addEventListener('input', updateAchievementsPreview);
+            });
+            
+            const edu1 = generateUUID();
+            const edu2 = generateUUID();
+            document.getElementById('education-container').innerHTML = `
+                <div class="border p-3 rounded bg-gray-50" data-edu-id="${edu1}">
+                    <input type="text" placeholder="Degree/Qualification" value="B. Tech. Civil Engineering (8.4 CGPA)" class="w-full p-1 border rounded mb-2 text-xs" data-edu-degree="${edu1}">
+                    <input type="text" placeholder="Institution Name" value="Quantum Dynamics University" class="w-full p-1 border rounded mb-2 text-xs" data-edu-institution="${edu1}">
+                    <input type="text" placeholder="Duration" value="2023" class="w-full p-1 border rounded mb-2 text-xs" data-edu-duration="${edu1}">
+                    <input type="text" placeholder="GPA/Grade (optional)" value="Core Curriculum included Structural Analysis, Geotechnical Engineering, and Project Management. Successfully completed a thesis on Seismic Retrofitting of Buildings." class="w-full p-1 border rounded text-xs" data-edu-gpa="${edu1}">
+                    <button type="button" onclick="removeDynamicItem('${edu1}', 'education')" class="w-full mt-2 py-1 bg-red-500 text-white rounded text-xs">Remove Education</button>
+                </div>
+                <div class="border p-3 rounded bg-gray-50" data-edu-id="${edu2}">
+                    <input type="text" placeholder="Degree/Qualification" value="HSC (Higher Secondary School Certificate - 85%)" class="w-full p-1 border rounded mb-2 text-xs" data-edu-degree="${edu2}">
+                    <input type="text" placeholder="Institution Name" value="Century High School" class="w-full p-1 border rounded mb-2 text-xs" data-edu-institution="${edu2}">
+                    <input type="text" placeholder="Duration" value="2019" class="w-full p-1 border rounded mb-2 text-xs" data-edu-duration="${edu2}">
+                    <input type="text" placeholder="GPA/Grade (optional)" value="Focused on Science Stream (Physics, Chemistry, Mathematics). Developed strong analytical and problem-solving skills." class="w-full p-1 border rounded text-xs" data-edu-gpa="${edu2}">
+                    <button type="button" onclick="removeDynamicItem('${edu2}', 'education')" class="w-full mt-2 py-1 bg-red-500 text-white rounded text-xs">Remove Education</button>
+                </div>`;
+            ['degree', 'institution', 'duration', 'gpa'].forEach(field => {
+                document.querySelector(`[data-edu-${field}="${edu1}"]`).addEventListener('input', updateEducationPreview);
+                document.querySelector(`[data-edu-${field}="${edu2}"]`).addEventListener('input', updateEducationPreview);
+            });
+            
+            const ref1 = generateUUID();
+            const ref2 = generateUUID();
+            document.getElementById('references-container').innerHTML = `
+                <div class="border p-3 rounded bg-gray-50" data-ref-id="${ref1}">
+                    <input type="text" placeholder="Reference Name" value="Dr. Katherine Reid" class="w-full p-1 border rounded mb-2 text-xs" data-ref-name="${ref1}">
+                    <input type="text" placeholder="Position/Title" value="Professor, Structural Engineering Dept." class="w-full p-1 border rounded mb-2 text-xs" data-ref-position="${ref1}">
+                    <input type="text" placeholder="Contact Info" value="kreid@quantumdynamics.edu" class="w-full p-1 border rounded text-xs" data-ref-contact="${ref1}">
+                    <button type="button" onclick="removeDynamicItem('${ref1}', 'reference')" class="w-full mt-2 py-1 bg-red-500 text-white rounded text-xs">Remove Reference</button>
+                </div>
+                <div class="border p-3 rounded bg-gray-50" data-ref-id="${ref2}">
+                    <input type="text" placeholder="Reference Name" value="Mr. Alex Chen" class="w-full p-1 border rounded mb-2 text-xs" data-ref-name="${ref2}">
+                    <input type="text" placeholder="Position/Title" value="Chief Project Manager, ConstructCorp" class="w-full p-1 border rounded mb-2 text-xs" data-ref-position="${ref2}">
+                    <input type="text" placeholder="Contact Info" value="alex.chen@constructcorp.io" class="w-full p-1 border rounded text-xs" data-ref-contact="${ref2}">
+                    <button type="button" onclick="removeDynamicItem('${ref2}', 'reference')" class="w-full mt-2 py-1 bg-red-500 text-white rounded text-xs">Remove Reference</button>
+                </div>`;
+            ['name', 'position', 'contact'].forEach(field => {
+                document.querySelector(`[data-ref-${field}="${ref1}"]`).addEventListener('input', updateReferencesPreview);
+                document.querySelector(`[data-ref-${field}="${ref2}"]`).addEventListener('input', updateReferencesPreview);
+            });
+        }
+        
+        function downloadPDF() {
+            const element = document.getElementById('resume-preview');
+            const previewSection = document.getElementById('preview-section');
+            const originalTransform = element.style.transform;
+            
+            element.style.transform = 'scale(1)';
+            
+            const opt = {
+                margin: 0,
+                filename: 'resume.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { 
+                    scale: 2, 
+                    useCORS: true,
+                    scrollX: 0,
+                    scrollY: 0
+                },
+                jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+            };
+            
+            html2pdf().set(opt).from(element).save().then(() => {
+                element.style.transform = originalTransform;
+            });
+        }
+    </script>
+</body>
+</html>
