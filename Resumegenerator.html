@@ -3,788 +3,458 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SaaS Professional Resume Generator</title>
+    <title>SaaS Invoice Generator (INR)</title>
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Load html2pdf library for PDF generation -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <!-- Load Lucide icons for professional look -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    
+    <!-- Load Inter Font -->
     <style>
-        /* Define Inter font and set base styles */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
-        :root {
-            --primary-blue: #0A3D62; /* Dark blue from the uploaded image header */
-            --skill-blue: #0A3D62; /* Skill tag background */
-            --light-grey: #F3FFfa;
-            --text-dark: #374151;
-            font-family: 'Inter', sans-serif;
-        }
-
-        body {
-            background-color: var(--light-grey);
-            color: var(--text-dark);
-            min-height: 100vh;
-        }
-
-        /* Resume Container Styling - CRITICAL FIX: Set width to 7.5in (8.5in paper - 1in total margin) */
-        .resume-page {
-            width: 7.5in; /* Fix for PDF clipping on right edge */
-            min-height: 11in; /* Standard Letter height */
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            background-color: white;
-            display: grid;
-            grid-template-columns: 280px 1fr; /* Two columns: narrow left, wide right */
-            margin: 0 auto;
-        }
-
-        /* Left Column (Skills, Contact, Languages) */
-        .left-column {
-            /* Adjusted padding to maintain balance in the reduced width */
-            padding: 30px 20px 30px 30px; 
-            border-right: 1px solid #E5E7EB; /* Subtle divider */
-            box-sizing: border-box;
-        }
-
-        /* Right Column (Header, Experience, Education) */
-        .right-column {
-            padding-bottom: 30px; /* Padding for the bottom of the content */
-            box-sizing: border-box;
-        }
-
-        /* Header Section (The Blue Box) */
-        .header-section {
-            background-color: var(--primary-blue);
-            color: white;
-            padding: 40px 30px 30px 30px;
-            margin-left: -1px; /* Overlap the border for seamless look */
-        }
-
-        /* Section Titles (Blue Underline) */
-        .section-title {
-            color: var(--primary-blue);
-            font-weight: 700;
-            font-size: 1.1rem;
-            margin-top: 20px;
-            margin-bottom: 0.5rem;
-            padding-bottom: 5px;
-            border-bottom: 2px solid var(--primary-blue);
-        }
-        
-        /* Skill Tag Styling (Deep Blue Pills) */
-        .skill-tag {
-            background-color: var(--skill-blue);
-            color: white;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.8rem;
-            margin-right: 5px;
-            margin-bottom: 5px;
-            white-space: nowrap; /* Prevent tags from splitting words */
-        }
-
-        /* Input Panel Sticky positioning */
-        .input-panel {
-            position: sticky;
-            top: 1rem; 
-            max-height: calc(100vh - 2rem);
-            overflow-y: auto;
-        }
-        
-        /* Language Bar Styling */
-        .language-bar {
-            height: 6px;
-            border-radius: 3px;
-            background-color: #E5E7EB;
+        html { font-family: 'Inter', sans-serif; }
+        /* Custom PDF-specific styles for better print layout */
+        .invoice-paper-shadow {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
     </style>
+    <!-- Load html2canvas for capturing HTML -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- Load jspdf for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
-<body class="p-4 md:p-8 flex flex-col items-center">
+<body class="bg-gray-50 p-4 sm:p-8">
 
-    <!-- Main Application Container -->
-    <div class="container-main w-full max-w-7xl mx-auto flex flex-col lg:flex-row gap-8">
-        
-        <!-- Input Panel (Left/Sticky on Desktop) -->
-        <div class="input-panel w-full lg:w-1/3 p-6 bg-white rounded-xl shadow-2xl">
-            <h2 class="text-2xl font-bold mb-4 text-gray-800">Resume Data Entry</h2>
-            
-            <button id="download-btn" onclick="downloadPDF()" class="w-full mt-2 mb-6 py-3 bg-red-600 text-white font-bold rounded-lg shadow-md hover:bg-red-700 transition flex items-center justify-center">
-                <span data-lucide="download" class="w-5 h-5 mr-2"></span>
-                Download Resume as PDF
-            </button>
-            
-            <form id="resume-form" class="space-y-6 text-sm">
-                
-                <!-- Profile Section -->
-                <fieldset class="border border-gray-200 p-3 rounded-md shadow-sm">
-                    <legend class="text-base font-semibold text-gray-700 px-2">1. Personal Info & Summary</legend>
-                    <div class="flex flex-col space-y-2">
-                        <input type="text" id="input-name" placeholder="Full Name (e.g., ELIAS THORNE)" class="w-full p-2 border rounded" data-target="preview-name" required>
-                        <input type="text" id="input-title" placeholder="Professional Title (e.g., Civil Engineer)" class="w-full p-2 border rounded" data-target="preview-title" required>
-                        <textarea id="input-summary" placeholder="Professional Summary (The text in the blue box)" class="w-full p-2 border rounded h-24 resize-none" data-target="preview-summary" required></textarea>
-                        
-                        <label class="block text-xs font-medium text-gray-700 mt-2">Profile Photo (Top Left)</label>
-                        <input type="file" id="input-photo" accept="image/*" class="text-xs w-full p-1 border rounded-md">
+    <header class="mb-8 text-center">
+        <h1 class="text-4xl font-extrabold text-blue-800">Invoice Pro</h1>
+        <p class="text-gray-500">Generate professional invoices in seconds (₹).</p>
+    </header>
+
+    <main class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+        <!-- Input Form Column -->
+        <div class="lg:col-span-1">
+            <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100 sticky top-8">
+                <h2 class="text-2xl font-semibold mb-6 text-gray-700 border-b pb-3">Invoice Details</h2>
+
+                <!-- Invoice Meta Data -->
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label for="invoiceNumber" class="block text-sm font-medium text-gray-700">Invoice #</label>
+                        <input type="text" id="invoiceNumber" value="INV-001" oninput="updateInvoice()"
+                               class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm p-2.5">
                     </div>
-                </fieldset>
+                    <div>
+                        <label for="invoiceDate" class="block text-sm font-medium text-gray-700">Date</label>
+                        <input type="date" id="invoiceDate" oninput="updateInvoice()"
+                               class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm p-2.5">
+                    </div>
+                </div>
 
-                <!-- Contact & Languages Section -->
-                <fieldset class="border border-gray-200 p-3 rounded-md shadow-sm">
-                    <legend class="text-base font-semibold text-gray-700 px-2">2. Contact & Languages</legend>
-                    <input type="text" id="input-email" placeholder="Email (e.g., name@gmail.com)" class="w-full p-2 border rounded mb-2" data-target="preview-email">
-                    <input type="text" id="input-phone" placeholder="Phone (e.g., 6005450615)" class="w-full p-2 border rounded mb-2" data-target="preview-phone">
-                    <input type="text" id="input-address" placeholder="Address (e.g., 190014, Hyderpora)" class="w-full p-2 border rounded mb-2" data-target="preview-address">
-                    <input type="text" id="input-linkedin" placeholder="LinkedIn Profile Name" class="w-full p-2 border rounded" data-target="preview-linkedin">
+                <!-- Your Business Details -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-medium text-gray-700 mb-2">Your Details</h3>
+
+                    <!-- Logo Upload Section -->
+                    <label for="logoUpload" class="block text-sm font-medium text-gray-700 mt-2">Company Logo (Upload)</label>
+                    <input type="file" id="logoUpload" accept="image/*" onchange="handleLogoChange(event)"
+                           class="mt-1 block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none p-2">
                     
-                    <label class="block text-sm font-medium text-gray-700 mt-4 border-t pt-3">Languages (Add & Delete)</label>
-                    <div id="languages-container" class="space-y-2"></div>
-                    <button type="button" onclick="addDynamicItem('language')" class="w-full py-1 mt-2 bg-indigo-500 text-white rounded text-xs hover:bg-indigo-600 transition">Add Language</button>
-                </fieldset>
-                
-                <!-- Dynamic Skills Section -->
-                <fieldset class="border border-gray-200 p-3 rounded-md shadow-sm">
-                    <legend class="text-base font-semibold text-gray-700 px-2">3. Skills & Certificates</legend>
-                    <div id="skills-container" class="space-y-4"></div>
-                    <button type="button" onclick="addDynamicItem('skill-group')" class="w-full py-2 mt-4 bg-green-600 text-white rounded text-sm hover:bg-green-700 transition">Add Skill Group</button>
-
-                    <label class="block text-sm font-medium text-gray-700 mt-4 border-t pt-3">Certificates (Simple List)</label>
-                    <div id="certificates-container" class="space-y-2"></div>
-                    <button type="button" onclick="addDynamicItem('certificate')" class="w-full py-1 mt-2 bg-teal-500 text-white rounded text-xs hover:bg-teal-600 transition">Add Certificate</button>
-                </fieldset>
-
-                <!-- Dynamic Experience Section -->
-                <fieldset class="border border-gray-200 p-3 rounded-md shadow-sm">
-                    <legend class="text-base font-semibold text-gray-700 px-2">4. Work Experience</legend>
-                    <div id="experience-container" class="space-y-4"></div>
-                    <button type="button" onclick="addDynamicItem('experience')" class="w-full py-2 mt-2 bg-red-500 text-white rounded text-sm hover:bg-red-600 transition">Add Job/Internship</button>
-                </fieldset>
-                
-                <!-- Dynamic Education Section -->
-                <fieldset class="border border-gray-200 p-3 rounded-md shadow-sm">
-                    <legend class="text-base font-semibold text-gray-700 px-2">5. Education & Achievements</legend>
-                    <div id="education-container" class="space-y-4"></div>
-                    <button type="button" onclick="addDynamicItem('education')" class="w-full py-2 mt-2 bg-purple-500 text-white rounded text-sm hover:bg-purple-600 transition">Add Education</button>
+                    <label for="logoUrl" class="block text-sm font-medium text-gray-700 mt-4">Company Logo (URL)</label>
+                    <input type="text" id="logoUrl" placeholder="Or paste Image URL (e.g., https://...)" oninput="handleLogoUrlChange()"
+                           class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm p-2.5">
                     
-                    <label class="block text-sm font-medium text-gray-700 mt-4 border-t pt-3">Achievements (Structured)</label>
-                    <div id="achievements-container" class="space-y-4"></div>
-                    <button type="button" onclick="addDynamicItem('achievement')" class="w-full py-2 mt-2 bg-yellow-600 text-white rounded text-sm hover:bg-yellow-700 transition">Add Achievement</button>
-                </fieldset>
-                
-                <!-- References Section -->
-                <fieldset class="border border-gray-200 p-3 rounded-md shadow-sm">
-                    <legend class="text-base font-semibold text-gray-700 px-2">6. References</legend>
-                    <div id="references-container" class="space-y-4"></div>
-                    <button type="button" onclick="addDynamicItem('reference')" class="w-full py-2 mt-2 bg-gray-500 text-white rounded text-sm hover:bg-gray-600 transition">Add Reference</button>
-                </fieldset>
-                
-            </form>
-        </div>
+                    <!-- Business Info -->
+                    <input type="text" id="businessName" placeholder="Your Company Name" value="Tech Solutions India" oninput="updateInvoice()"
+                           class="mt-4 mb-2 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm p-2.5">
+                    <textarea id="businessAddress" placeholder="Your Address & Contact" rows="3" oninput="updateInvoice()"
+                              class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm p-2.5 resize-none">Unit 401, Cyber City, Gurgaon, Haryana 122002</textarea>
+                </div>
 
-        <!-- Resume Preview Panel (Right on Desktop) -->
-        <div class="resume-preview-panel w-full lg:w-2/3 flex justify-center py-4">
-            <div id="resume-preview" class="resume-page overflow-hidden">
-                
-                <!-- Left Column (Contact, Skills, Certificates, Languages, References) -->
-                <div class="left-column">
-                    
-                    <!-- Profile Photo and Contact Info -->
-                    <div class="mb-8">
-                        <!-- Photo Container -->
-                        <div class="w-48 h-48 mx-auto mb-4 border-4 border-gray-300 rounded-full overflow-hidden flex items-center justify-center text-center text-xs text-gray-500 bg-gray-100">
-                             <img id="preview-photo" src="https://placehold.co/192x192/E0E0E0/808080?text=Upload%20Photo" alt="Profile" class="w-full h-full object-cover">
-                        </div>
-                        
-                        <!-- Contact Info -->
-                        <div class="mt-8 space-y-3">
-                            <div class="flex items-start">
-                                <span data-lucide="mail" class="w-4 h-4 mr-3 text-gray-500 flex-shrink-0"></span>
-                                <p class="text-sm break-words"><span id="preview-email">elias.thorne@synthmail.com</span></p>
-                            </div>
-                            <div class="flex items-start">
-                                <span data-lucide="phone" class="w-4 h-4 mr-3 text-gray-500 flex-shrink-0"></span>
-                                <p class="text-sm"><span id="preview-phone">0000000000</span></p>
-                            </div>
-                            <div class="flex items-start">
-                                <span data-lucide="map-pin" class="w-4 h-4 mr-3 text-gray-500 flex-shrink-0"></span>
-                                <p class="text-sm"><span id="preview-address">123, Sample Address, Country</span></p>
-                            </div>
-                            <div class="flex items-start">
-                                <span data-lucide="linkedin" class="w-4 h-4 mr-3 text-gray-500 flex-shrink-0"></span>
-                                <p class="text-sm"><span id="preview-linkedin">Your LinkedIn Name</span></p>
-                            </div>
-                        </div>
-                    </div>
+                <!-- Client Details -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-medium text-gray-700 mb-2">Client Details</h3>
+                    <input type="text" id="clientName" placeholder="Client Company Name" value="Reliance Digital Pvt Ltd" oninput="updateInvoice()"
+                           class="mb-2 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm p-2.5">
+                    <textarea id="clientAddress" placeholder="Client Address & Contact" rows="3" oninput="updateInvoice()"
+                              class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm p-2.5 resize-none">Mumbai HQ, Maharashtra, India</textarea>
+                </div>
 
-                    <!-- Skills Section -->
-                    <div class="mt-8">
-                        <h3 class="section-title">SKILLS</h3>
-                        <div id="preview-skills-container" class="pt-3 space-y-4">
-                            <!-- Dynamic Skill Groups -->
-                        </div>
+                <!-- Item Management (Hidden inputs for template) -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-medium text-gray-700 mb-2">Line Items (Price in ₹)</h3>
+                    <div id="itemInputs" class="space-y-3">
+                        <!-- Items will be added here -->
                     </div>
-                    
-                    <!-- Certificates Section -->
-                    <div class="mt-8">
-                        <h3 class="section-title">CERTIFICATES</h3>
-                        <ul id="preview-certificates-list" class="pt-3 list-none text-sm space-y-1 pl-0">
-                            <!-- Dynamic Certificates -->
-                        </ul>
-                    </div>
+                    <button onclick="addItem()" class="mt-4 w-full flex items-center justify-center p-2 border border-dashed border-blue-400 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors">
+                        <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                        Add Item
+                    </button>
+                </div>
 
-                    <!-- Languages Section -->
-                    <div class="mt-8">
-                        <h3 class="section-title">LANGUAGES</h3>
-                        <div id="preview-languages-container" class="pt-3 space-y-3 text-sm">
-                            <!-- Dynamic Languages -->
+                <!-- Tax and Discount -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-medium text-gray-700 mb-2">Summary</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="taxRate" class="block text-sm font-medium text-gray-700">Tax Rate (GST %)</label>
+                            <input type="number" id="taxRate" value="18" min="0" oninput="updateInvoice()"
+                                   class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm p-2.5">
                         </div>
-                    </div>
-
-                    <!-- References Section -->
-                    <div class="mt-8">
-                        <h3 class="section-title">REFERENCES</h3>
-                        <div id="preview-references-container" class="pt-3 space-y-4 text-sm">
-                            <!-- Dynamic References -->
+                        <div>
+                            <label for="discountRate" class="block text-sm font-medium text-gray-700">Discount (%)</label>
+                            <input type="number" id="discountRate" value="0" min="0" oninput="updateInvoice()"
+                                   class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm p-2.5">
                         </div>
                     </div>
                 </div>
 
-                <!-- Right Column (Header, Experience, Education, Achievements) -->
-                <div class="right-column">
-                    
-                    <!-- Header/Summary Section (Blue Box) -->
-                    <div class="header-section">
-                        <h1 class="text-4xl font-extrabold tracking-wider" id="preview-name">ELIAS THORNE</h1>
-                        <h2 class="text-xl font-light mt-1 mb-6" id="preview-title">Civil Engineer</h2>
-                        <p class="text-sm font-light leading-relaxed" id="preview-summary">
-                            I am a dedicated Civil Engineer with strong expertise in structural design, analysis, and project execution, proficient in industry-standard software such as AutoCAD, STAAD Pro, SAP2000, Revit, 3DS Max, RCDC, and ETABS. Committed to teamwork, innovation, and continuous learning.
-                        </p>
-                    </div>
-
-                    <!-- Work Experience Section -->
-                    <div class="p-8 pt-6">
-                        <h3 class="section-title">WORK EXPERIENCE</h3>
-                        <div id="preview-experience-container" class="mt-4 space-y-6">
-                            <!-- Dynamic Work Experience -->
-                        </div>
-                    </div>
-                    
-                    <!-- Achievements Section -->
-                    <div class="px-8 pt-4">
-                        <h3 class="section-title">ACHIEVEMENTS</h3>
-                        <div id="preview-achievements-container" class="mt-4 space-y-6">
-                            <!-- Dynamic Achievements -->
-                        </div>
-                    </div>
-                    
-                    <!-- Education Section -->
-                    <div class="px-8 pt-4">
-                        <h3 class="section-title">EDUCATION</h3>
-                        <div id="preview-education-container" class="mt-4 space-y-6">
-                            <!-- Dynamic Education -->
-                        </div>
-                    </div>
-                </div>
+                <!-- PDF Download Button -->
+                <button id="downloadPdfBtn" onclick="downloadPDF()" class="w-full bg-blue-600 text-white p-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors shadow-md mt-4">
+                    <svg class="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    Download Invoice as PDF
+                </button>
+                <div id="loadingMessage" class="hidden mt-2 text-center text-sm text-blue-500">Generating PDF...</div>
 
             </div>
         </div>
-    </div>
-    
+
+        <!-- Invoice Preview Column -->
+        <div class="lg:col-span-2">
+            <div id="invoicePreviewContainer" class="bg-gray-100 p-4 rounded-xl">
+                <!-- Invoice Paper (The element to be converted to PDF) -->
+                <div id="invoicePaper" class="bg-white p-8 sm:p-12 rounded-xl invoice-paper-shadow w-full min-h-[800px]">
+                    <!-- Invoice content will be dynamically rendered here -->
+                </div>
+            </div>
+        </div>
+    </main>
+
     <script>
-        // Global utility to get UUID for dynamic inputs
-        const generateUUID = () => Date.now().toString(36) + Math.random().toString(36).substring(2);
+        // Global state for logo URL
+        let currentLogoUrl = '';
 
-        document.addEventListener('DOMContentLoaded', () => {
-            // Initialize Lucide icons
-            lucide.createIcons();
-
-            // Setup Event Listeners for Static Fields
-            document.querySelectorAll('#resume-form input[data-target], #resume-form textarea[data-target]').forEach(input => {
-                input.addEventListener('input', updateStaticPreview);
-            });
-            
-            // Handle image upload
-            document.getElementById('input-photo').addEventListener('change', (event) => {
-                const file = event.target.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        document.getElementById('preview-photo').src = e.target.result;
-                    };
-                    reader.readAsDataURL(file);
-                }
-            });
-
-            // Initial content generation (Populate with example data matching the image)
-            loadInitialData();
-            updateAllPreviews();
+        // Global utility to format currency in Indian Rupees (INR)
+        const formatter = new Intl.NumberFormat('en-IN', {
+            style: 'currency',
+            currency: 'INR',
+            minimumFractionDigits: 2,
         });
 
-        // --- CORE UPDATE LOGIC ---
+        // --- Initialization and Item Management ---
 
-        // Update static fields (Name, Title, Summary, Contact)
-        function updateStaticPreview(e) {
-            const input = e ? e.target : null;
-            
-            // Handle specific input updates or update all if called without event
-            if (input && input.hasAttribute('data-target')) {
-                const targetId = input.getAttribute('data-target');
-                const targetElement = document.getElementById(targetId);
-                if (targetElement) {
-                    targetElement.textContent = input.value || input.placeholder;
-                }
-            } else if (!input) {
-                // Update all static fields on initial load
-                document.querySelectorAll('#resume-form input[data-target], #resume-form textarea[data-target]').forEach(el => {
-                    const targetId = el.getAttribute('data-target');
-                    const targetElement = document.getElementById(targetId);
-                    if (targetElement) {
-                        targetElement.textContent = el.value || el.placeholder;
-                    }
-                });
+        window.onload = function() {
+            // Set current date
+            document.getElementById('invoiceDate').valueAsDate = new Date();
+
+            addItem('Custom Software Development', 1, 75000.00);
+            addItem('Annual Hosting Fee', 1, 12000.00);
+            updateInvoice();
+        };
+
+        /**
+         * Adds a new line item input group to the form.
+         * @param {string} desc - Default description.
+         * @param {number} qty - Default quantity.
+         * @param {number} price - Default unit price.
+         */
+        function addItem(desc = '', qty = 1, price = 0.00) {
+            const container = document.getElementById('itemInputs');
+            const index = container.children.length;
+
+            const itemHtml = `
+                <div id="item-${index}" class="p-3 border border-gray-200 rounded-lg bg-gray-50 flex flex-col space-y-2">
+                    <div class="flex justify-end">
+                        <button onclick="removeItem(${index})" class="text-red-500 hover:text-red-700 transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3"></path></svg>
+                        </button>
+                    </div>
+                    <input type="text" id="itemDesc-${index}" placeholder="Description" value="${desc}" oninput="updateInvoice()"
+                           class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm p-2.5">
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="number" id="itemQty-${index}" placeholder="Qty" value="${qty}" min="1" oninput="updateInvoice()"
+                               class="rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm p-2.5">
+                        <input type="number" id="itemPrice-${index}" placeholder="Price (₹)" value="${price.toFixed(2)}" min="0.01" step="0.01" oninput="updateInvoice()"
+                               class="rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm p-2.5">
+                    </div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', itemHtml);
+            updateInvoice(); // Update preview after adding item
+        }
+
+        /**
+         * Removes a line item input group.
+         * @param {number} index - The index of the item to remove.
+         */
+        function removeItem(index) {
+            const itemElement = document.getElementById(`item-${index}`);
+            if (itemElement) {
+                itemElement.remove();
+                updateInvoice(); // Update preview after removing item
             }
         }
 
-        // Update all dynamic content sections
-        function updateAllPreviews() {
-            updateStaticPreview(); // Update static fields first
-            updateSkillsPreview();
-            updateCertificatesPreview();
-            updateLanguagesPreview();
-            updateReferencesPreview();
-            updateExperiencePreview();
-            updateAchievementsPreview();
-            updateEducationPreview();
-            lucide.createIcons(); // Re-render icons after DOM manipulation
-        }
+        // --- Logo Handling Functions ---
 
-        // --- DYNAMIC ITEM RENDERING ---
-        
-        // Update Skills Preview (Group/Tags structure)
-        function updateSkillsPreview() {
-            const container = document.getElementById('preview-skills-container');
-            container.innerHTML = '';
-            
-            document.querySelectorAll('#skills-container > div').forEach(groupDiv => {
-                const id = groupDiv.getAttribute('data-id');
-                const title = document.getElementById(`skill-title-${id}`).value;
-                const tagsInput = document.getElementById(`skill-tags-${id}`).value;
-                
-                if (title && tagsInput) {
-                    const tags = tagsInput.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
-                    
-                    const groupHtml = `
-                        <div>
-                            <p class="font-semibold text-gray-800 text-sm">${title}</p>
-                            <div class="flex flex-wrap pt-1">
-                                ${tags.map(tag => `<span class="skill-tag">${tag}</span>`).join('')}
-                            </div>
-                        </div>
-                    `;
-                    container.innerHTML += groupHtml;
-                }
-            });
-        }
-        
-        // Update Certificates Preview (Simple List)
-        function updateCertificatesPreview() {
-            const container = document.getElementById('preview-certificates-list');
-            container.innerHTML = '';
-            
-            document.querySelectorAll('#certificates-container > div').forEach(certDiv => {
-                const id = certDiv.getAttribute('data-id');
-                const text = document.getElementById(`certificate-text-${id}`).value;
-                
-                if (text) {
-                    container.innerHTML += `<li class="text-sm mt-1 leading-snug">${text}</li>`;
-                }
-            });
-        }
-        
-        // Update Languages Preview (List with bars)
-        function updateLanguagesPreview() {
-            const container = document.getElementById('preview-languages-container');
-            container.innerHTML = '';
-            
-            document.querySelectorAll('#languages-container > div').forEach(langDiv => {
-                const id = langDiv.getAttribute('data-id');
-                const name = document.getElementById(`language-name-${id}`).value;
-                const proficiency = document.getElementById(`language-proficiency-${id}`).value; // 0-100
-                
-                if (name) {
-                    const html = `
-                        <div class="flex items-center justify-between">
-                            <span class="text-sm font-medium w-2/5">${name}</span>
-                            <div class="language-bar w-3/5">
-                                <div style="width: ${proficiency}%; background-color: var(--primary-blue);" class="h-full rounded-l-full"></div>
-                            </div>
-                        </div>
-                    `;
-                    container.innerHTML += html;
-                }
-            });
-        }
-        
-        // Update References Preview (Contact blocks)
-        function updateReferencesPreview() {
-            const container = document.getElementById('preview-references-container');
-            container.innerHTML = '';
-            
-            document.querySelectorAll('#references-container > div').forEach(refDiv => {
-                const id = refDiv.getAttribute('data-id');
-                const name = document.getElementById(`reference-name-${id}`).value;
-                const title = document.getElementById(`reference-title-${id}`).value;
-                const email = document.getElementById(`reference-email-${id}`).value;
-                
-                if (name) {
-                    const html = `
-                        <div>
-                            <p class="font-semibold text-gray-800">${name}</p>
-                            <p class="text-xs text-gray-600">${title}</p>
-                            <p class="text-xs text-gray-600">${email}</p>
-                        </div>
-                    `;
-                    container.innerHTML += html;
-                }
-            });
-        }
-
-        // Update Experience Preview (Structured Job/Internship)
-        function updateExperiencePreview() {
-            const container = document.getElementById('preview-experience-container');
-            container.innerHTML = '';
-            
-            document.querySelectorAll('#experience-container > div').forEach(expDiv => {
-                const id = expDiv.getAttribute('data-id');
-                const type = document.getElementById(`experience-type-${id}`).value;
-                const company = document.getElementById(`experience-company-${id}`).value;
-                const dateRange = document.getElementById(`experience-dates-${id}`).value;
-                const description = document.getElementById(`experience-description-${id}`).value;
-                const year = document.getElementById(`experience-year-${id}`).value;
-                
-                if (company) {
-                    const html = `
-                        <div class="experience-item">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <p class="font-bold text-gray-900">${type || 'Experience'}</p>
-                                    <p class="text-sm text-gray-700">${company}</p>
-                                    <p class="text-xs text-gray-500">${dateRange}</p>
-                                </div>
-                                ${year ? `<span class="text-xs text-right text-blue-500 font-medium">${year}</span>` : ''}
-                            </div>
-                            <p class="text-sm mt-2 leading-relaxed text-gray-700">${description}</p>
-                        </div>
-                    `;
-                    container.innerHTML += html;
-                }
-            });
-        }
-        
-        // Update Achievements Preview (Date, Title, Description)
-        function updateAchievementsPreview() {
-            const container = document.getElementById('preview-achievements-container');
-            container.innerHTML = '';
-            
-            document.querySelectorAll('#achievements-container > div').forEach(achDiv => {
-                const id = achDiv.getAttribute('data-id');
-                const title = document.getElementById(`achievement-title-${id}`).value;
-                const date = document.getElementById(`achievement-date-${id}`).value;
-                const description = document.getElementById(`achievement-description-${id}`).value;
-                const year = document.getElementById(`achievement-year-${id}`).value;
-                
-                if (title) {
-                    const html = `
-                        <div class="achievement-item">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <p class="font-semibold text-gray-900">${title}</p>
-                                    <p class="text-xs text-gray-500">${date}</p>
-                                </div>
-                                ${year ? `<span class="text-xs text-right text-blue-500 font-medium">${year}</span>` : ''}
-                            </div>
-                            <p class="text-sm mt-1 leading-snug text-gray-700">${description}</p>
-                        </div>
-                    `;
-                    container.innerHTML += html;
-                }
-            });
-        }
-
-        // Update Education Preview (Degree, Institute, Dates, Description)
-        function updateEducationPreview() {
-            const container = document.getElementById('preview-education-container');
-            container.innerHTML = '';
-            
-            document.querySelectorAll('#education-container > div').forEach(eduDiv => {
-                const id = eduDiv.getAttribute('data-id');
-                const degree = document.getElementById(`education-degree-${id}`).value;
-                const institute = document.getElementById(`education-institute-${id}`).value;
-                const dateRange = document.getElementById(`education-dates-${id}`).value;
-                const description = document.getElementById(`education-description-${id}`).value;
-                const year = document.getElementById(`education-year-${id}`).value;
-                
-                if (degree) {
-                    const html = `
-                        <div class="education-item">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <p class="font-bold text-gray-900">${degree}</p>
-                                    <p class="text-sm text-gray-700">${institute}</p>
-                                    <p class="text-xs text-gray-500">${dateRange}</p>
-                                </div>
-                                ${year ? `<span class="text-xs text-right text-blue-500 font-medium">${year}</span>` : ''}
-                            </div>
-                            <p class="text-sm mt-1 leading-snug text-gray-700">${description}</p>
-                        </div>
-                    `;
-                    container.innerHTML += html;
-                }
-            });
-        }
-        
-
-        // --- DYNAMIC ITEM TEMPLATING ---
-
-        function addDynamicItem(type, initialData = {}) {
-            const id = generateUUID();
-            let html = '';
-            let containerId = '';
-            
-            switch (type) {
-                case 'skill-group':
-                    containerId = 'skills-container';
-                    html = `
-                        <div data-id="${id}" class="border p-2 rounded-md bg-gray-50">
-                            <div class="flex justify-end">
-                                <button type="button" onclick="removeDynamicItem('${id}', 'skill-group')" class="text-red-500 hover:text-red-700 text-xs font-semibold">Remove</button>
-                            </div>
-                            <input type="text" id="skill-title-${id}" placeholder="Group Title (e.g., Design Software)" value="${initialData.title || ''}" oninput="updateSkillsPreview()" class="w-full p-1 border rounded text-sm mb-1">
-                            <textarea id="skill-tags-${id}" placeholder="Tags (Comma separated: AutoCAD, Revit, ETABS)" oninput="updateSkillsPreview()" class="w-full p-1 border rounded text-xs h-16 resize-none">${initialData.tags || ''}</textarea>
-                        </div>
-                    `;
-                    break;
-                case 'certificate':
-                    containerId = 'certificates-container';
-                    html = `
-                        <div data-id="${id}" class="flex items-center space-x-2">
-                            <input type="text" id="certificate-text-${id}" placeholder="Certificate Name or Description" value="${initialData.text || ''}" oninput="updateCertificatesPreview()" class="w-full p-1 border rounded text-sm">
-                            <button type="button" onclick="removeDynamicItem('${id}', 'certificate')" class="text-red-500 hover:text-red-700 text-sm">
-                                <span data-lucide="x" class="w-4 h-4"></span>
-                            </button>
-                        </div>
-                    `;
-                    break;
-                case 'language':
-                    containerId = 'languages-container';
-                    html = `
-                        <div data-id="${id}" class="border p-2 rounded-md bg-gray-50">
-                            <div class="flex justify-end">
-                                <button type="button" onclick="removeDynamicItem('${id}', 'language')" class="text-red-500 hover:text-red-700 text-xs font-semibold">Remove</button>
-                            </div>
-                            <input type="text" id="language-name-${id}" placeholder="Language Name (e.g., English)" value="${initialData.name || ''}" oninput="updateLanguagesPreview()" class="w-full p-1 border rounded text-sm mb-1">
-                            <label class="text-xs text-gray-600">Proficiency (1-100%): <span id="language-value-${id}">${initialData.proficiency || 75}%</span></label>
-                            <input type="range" id="language-proficiency-${id}" min="0" max="100" value="${initialData.proficiency || 75}" oninput="document.getElementById('language-value-${id}').textContent = this.value + '%'; updateLanguagesPreview()" class="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer range-sm">
-                        </div>
-                    `;
-                    break;
-                case 'reference':
-                    containerId = 'references-container';
-                    html = `
-                        <div data-id="${id}" class="border p-2 rounded-md bg-gray-50">
-                            <div class="flex justify-end">
-                                <button type="button" onclick="removeDynamicItem('${id}', 'reference')" class="text-red-500 hover:text-red-700 text-xs font-semibold">Remove</button>
-                            </div>
-                            <input type="text" id="reference-name-${id}" placeholder="Name (e.g., Dr. Jane Doe)" value="${initialData.name || ''}" oninput="updateReferencesPreview()" class="w-full p-1 border rounded text-sm mb-1">
-                            <input type="text" id="reference-title-${id}" placeholder="Title/Affiliation" value="${initialData.title || ''}" oninput="updateReferencesPreview()" class="w-full p-1 border rounded text-sm mb-1">
-                            <input type="email" id="reference-email-${id}" placeholder="Email Address (Required for reference)" value="${initialData.email || ''}" oninput="updateReferencesPreview()" class="w-full p-1 border rounded text-sm">
-                        </div>
-                    `;
-                    break;
-                case 'experience':
-                    containerId = 'experience-container';
-                    html = `
-                        <div data-id="${id}" class="border p-2 rounded-md bg-gray-50">
-                            <div class="flex justify-end">
-                                <button type="button" onclick="removeDynamicItem('${id}', 'experience')" class="text-red-500 hover:text-red-700 text-xs font-semibold">Remove</button>
-                            </div>
-                            <input type="text" id="experience-type-${id}" placeholder="Position/Role" value="${initialData.type || ''}" oninput="updateExperiencePreview()" class="w-full p-1 border rounded text-sm mb-1">
-                            <input type="text" id="experience-company-${id}" placeholder="Company/Organization" value="${initialData.company || ''}" oninput="updateExperiencePreview()" class="w-full p-1 border rounded text-sm mb-1">
-                            <div class="flex space-x-2 mb-1">
-                                <input type="text" id="experience-dates-${id}" placeholder="Dates (e.g., Jan 2023 - Present)" value="${initialData.dateRange || ''}" oninput="updateExperiencePreview()" class="w-2/3 p-1 border rounded text-xs">
-                                <input type="text" id="experience-year-${id}" placeholder="Year/Location (Preview Right)" value="${initialData.year || ''}" oninput="updateExperiencePreview()" class="w-1/3 p-1 border rounded text-xs">
-                            </div>
-                            <textarea id="experience-description-${id}" placeholder="Key Accomplishment/Description" oninput="updateExperiencePreview()" class="w-full p-1 border rounded text-xs h-16 resize-none">${initialData.description || ''}</textarea>
-                        </div>
-                    `;
-                    break;
-                case 'education':
-                    containerId = 'education-container';
-                    html = `
-                        <div data-id="${id}" class="border p-2 rounded-md bg-gray-50">
-                            <div class="flex justify-end">
-                                <button type="button" onclick="removeDynamicItem('${id}', 'education')" class="text-red-500 hover:text-red-700 text-xs font-semibold">Remove</button>
-                            </div>
-                            <input type="text" id="education-degree-${id}" placeholder="Degree/Course (e.g., M.Sc. Data Science)" value="${initialData.degree || ''}" oninput="updateEducationPreview()" class="w-full p-1 border rounded text-sm mb-1">
-                            <input type="text" id="education-institute-${id}" placeholder="Institute/University Name" value="${initialData.institute || ''}" oninput="updateEducationPreview()" class="w-full p-1 border rounded text-sm mb-1">
-                            <div class="flex space-x-2 mb-1">
-                                <input type="text" id="education-dates-${id}" placeholder="Dates (e.g., 2018 - 2022)" value="${initialData.dateRange || ''}" oninput="updateEducationPreview()" class="w-2/3 p-1 border rounded text-xs">
-                                <input type="text" id="education-year-${id}" placeholder="Year/Location (Preview Right)" value="${initialData.year || ''}" oninput="updateEducationPreview()" class="w-1/3 p-1 border rounded text-xs">
-                            </div>
-                            <textarea id="education-description-${id}" placeholder="Details (e.g., Thesis title, GPA/Percentage)" oninput="updateEducationPreview()" class="w-full p-1 border rounded text-xs h-16 resize-none">${initialData.description || ''}</textarea>
-                        </div>
-                    `;
-                    break;
-                case 'achievement':
-                    containerId = 'achievements-container';
-                    html = `
-                        <div data-id="${id}" class="border p-2 rounded-md bg-gray-50">
-                            <div class="flex justify-end">
-                                <button type="button" onclick="removeDynamicItem('${id}', 'achievement')" class="text-red-500 hover:text-red-700 text-xs font-semibold">Remove</button>
-                            </div>
-                            <input type="text" id="achievement-title-${id}" placeholder="Achievement Title (e.g., Dean's List Award)" value="${initialData.title || ''}" oninput="updateAchievementsPreview()" class="w-full p-1 border rounded text-sm mb-1">
-                            <div class="flex space-x-2 mb-1">
-                                <input type="text" id="achievement-date-${id}" placeholder="Date/Location" value="${initialData.date || ''}" oninput="updateAchievementsPreview()" class="w-2/3 p-1 border rounded text-xs">
-                                <input type="text" id="achievement-year-${id}" placeholder="Year (Preview Right)" value="${initialData.year || ''}" oninput="updateAchievementsPreview()" class="w-1/3 p-1 border rounded text-xs">
-                            </div>
-                            <textarea id="achievement-description-${id}" placeholder="Detailed Description/Impact" oninput="updateAchievementsPreview()" class="w-full p-1 border rounded text-xs h-16 resize-none">${initialData.description || ''}</textarea>
-                        </div>
-                    `;
-                    break;
-            }
-            
-            if (containerId) {
-                document.getElementById(containerId).insertAdjacentHTML('beforeend', html);
-                updateAllPreviews();
+        /**
+         * Handles local file upload for the logo and converts it to a Data URL.
+         */
+        function handleLogoChange(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    currentLogoUrl = e.target.result;
+                    document.getElementById('logoUrl').value = ''; // Clear URL input
+                    updateInvoice();
+                };
+                reader.readAsDataURL(file);
             }
         }
 
-        function removeDynamicItem(id, type) {
-            const element = document.querySelector(`[data-id="${id}"]`);
-            if (element) {
-                element.remove();
-                // Update specific preview based on type
-                switch(type) {
-                    case 'skill-group': updateSkillsPreview(); break;
-                    case 'certificate': updateCertificatesPreview(); break;
-                    case 'language': updateLanguagesPreview(); break;
-                    case 'reference': updateReferencesPreview(); break;
-                    case 'experience': updateExperiencePreview(); break;
-                    case 'education': updateEducationPreview(); break;
-                    case 'achievement': updateAchievementsPreview(); break;
-                }
-            }
+        /**
+         * Handles manual URL input for the logo.
+         */
+        function handleLogoUrlChange() {
+            currentLogoUrl = document.getElementById('logoUrl').value;
+            document.getElementById('logoUpload').value = ''; // Clear file input
+            updateInvoice();
         }
 
-        // --- PDF GENERATION ---
+        /**
+         * Reads all item inputs and returns an array of item objects.
+         * @returns {Array<Object>} List of items.
+         */
+        function getItemsData() {
+            const items = [];
+            const container = document.getElementById('itemInputs');
+            // Get all div elements that represent an item
+            const itemElements = container.querySelectorAll('[id^="item-"]');
 
-        function downloadPDF() {
-            const element = document.getElementById('resume-preview');
-            const opt = {
-                margin: 0.5,
-                filename: document.getElementById('input-name').value.replace(/\s/g, '_') + '_Resume.pdf',
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, logging: true, dpi: 192, letterRendering: true },
-                jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+            itemElements.forEach((itemEl) => {
+                // Find inputs within the current item element
+                const descInput = itemEl.querySelector(`[id^="itemDesc-"]`);
+                const qtyInput = itemEl.querySelector(`[id^="itemQty-"]`);
+                const priceInput = itemEl.querySelector(`[id^="itemPrice-"]`);
+
+                // Simple validation check before parsing
+                if (descInput && qtyInput && priceInput) {
+                    const qty = parseFloat(qtyInput.value) || 0;
+                    const price = parseFloat(priceInput.value) || 0;
+                    const total = qty * price;
+
+                    items.push({
+                        description: descInput.value || 'Untitled Item',
+                        quantity: qty,
+                        price: price,
+                        total: total
+                    });
+                }
+            });
+            return items;
+        }
+
+        /**
+         * Calculates the subtotal, tax, discount, and grand total.
+         * @param {Array<Object>} items - List of invoice items.
+         * @returns {Object} Calculated summary totals.
+         */
+        function calculateTotal(items) {
+            const subtotal = items.reduce((sum, item) => sum + item.total, 0);
+            // Tax and discount rates are percentage (e.g., 18 for 18%)
+            const taxRate = parseFloat(document.getElementById('taxRate').value) / 100 || 0;
+            const discountRate = parseFloat(document.getElementById('discountRate').value) / 100 || 0;
+
+            const preTaxTotal = subtotal;
+            const discountAmount = preTaxTotal * discountRate;
+            // Tax is calculated on the amount *after* discount
+            const taxableBase = preTaxTotal - discountAmount;
+            const taxAmount = taxableBase * taxRate;
+            const grandTotal = taxableBase + taxAmount;
+
+            return {
+                subtotal,
+                taxRate: taxRate * 100,
+                discountRate: discountRate * 100,
+                discountAmount,
+                taxAmount,
+                grandTotal
             };
-            
-            // Show a temporary message during download
-            const downloadBtn = document.getElementById('download-btn');
-            const originalText = downloadBtn.innerHTML;
-            downloadBtn.innerHTML = '<span data-lucide="loader-circle" class="w-5 h-5 mr-2 animate-spin"></span> Generating PDF...';
-            lucide.createIcons();
-            
-            html2pdf().from(element).set(opt).save().then(() => {
-                downloadBtn.innerHTML = originalText;
-                lucide.createIcons();
-            });
         }
-        
-        // --- INITIAL DATA LOAD (EDITED) ---
 
-        function loadInitialData() {
-            // Static Personal Info (EDITED)
-            document.getElementById('input-name').value = 'ELIAS THORNE';
-            document.getElementById('input-title').value = 'Civil Engineer';
-            document.getElementById('input-summary').value = 'I am a dedicated Civil Engineer with strong expertise in structural design, analysis, and project execution, proficient in industry-standard software such as AutoCAD, STAAD Pro, SAP2000, Revit, 3DS Max, RCDC, and ETABS. Committed to teamwork, innovation, and continuous learning.';
-            
-            // Static Contact Info (EDITED)
-            document.getElementById('input-email').value = 'elias.thorne@synthmail.com';
-            document.getElementById('input-phone').value = '555-0101-555';
-            document.getElementById('input-address').value = '789 Nova Lane, New Arcadia';
-            document.getElementById('input-linkedin').value = 'elias-thorne-civil';
+        /**
+         * Main function to update the invoice preview whenever an input changes.
+         */
+        function updateInvoice() {
+            const items = getItemsData();
+            const totals = calculateTotal(items);
 
-            // Dynamic Skills
-            addDynamicItem('skill-group', { title: 'Design & Analysis Software', tags: 'AutoCAD, STAAD Pro, SAP2000, Revit, ETABS, RCDC' });
-            addDynamicItem('skill-group', { title: 'Project Management', tags: 'Primavera P6, MS Project, Agile Methodology' });
-            addDynamicItem('skill-group', { title: 'Core Competencies', tags: 'Structural Design, Quantity Surveying, Site Supervision, Quality Control' });
-            
-            // Dynamic Certificates
-            addDynamicItem('certificate', { text: 'Certified Structural Analyst (CSA)' });
-            addDynamicItem('certificate', { text: 'Advanced AutoCAD Professional' });
-            addDynamicItem('certificate', { text: 'Project Management Professional (PMP)' });
-            
-            // Dynamic Languages
-            addDynamicItem('language', { name: 'English', proficiency: 95 });
-            addDynamicItem('language', { name: 'French', proficiency: 60 });
-            addDynamicItem('language', { name: 'Spanish', proficiency: 45 });
+            const businessName = document.getElementById('businessName').value;
+            // Replace newlines with <br> for HTML display
+            const businessAddress = document.getElementById('businessAddress').value.replace(/\n/g, '<br>');
+            const clientName = document.getElementById('clientName').value;
+            const clientAddress = document.getElementById('clientAddress').value.replace(/\n/g, '<br>');
+            const invoiceNumber = document.getElementById('invoiceNumber').value;
+            const invoiceDate = document.getElementById('invoiceDate').value;
 
-            // Dynamic References (EMAIL EDITED)
-            addDynamicItem('reference', {
-                name: 'Dr. Katherine Reid',
-                title: 'Professor, Structural Engineering Dept.',
-                email: 'dr.k.reid@qdu.edu' 
-            });
-            addDynamicItem('reference', {
-                name: 'Mr. Alex Chen',
-                title: 'Chief Project Manager, ConstructCorp',
-                email: 'alex.chen@constructcorp.io'
-            });
+            // Determine the logo content based on the currentLogoUrl
+            // Increased size classes: max-h-28 (112px height) and max-w-64 (256px width) for a larger logo.
+            const logoElement = currentLogoUrl ?
+                `<img src="${currentLogoUrl}" alt="${businessName} Logo" class="max-h-28 max-w-64 object-contain mx-auto lg:ml-auto rounded-lg" onerror="this.onerror=null;this.src='https://placehold.co/112x112/E0F2FE/1D4ED8?text=Logo'">` :
+                // Updated placeholder size to w-28 h-28 for consistency
+                `<div class="w-28 h-28 bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-2xl rounded-lg mx-auto lg:ml-auto mt-2">${businessName.charAt(0) || '?'}</div>`;
 
-            // Dynamic Experience
-            addDynamicItem('experience', {
-                type: 'Junior Structural Designer',
-                company: 'Global Structures Ltd.',
-                dateRange: 'Jan 2024 - Present',
-                year: '2024',
-                description: 'Assisted in the design and analysis of five high-rise residential projects using ETABS and STAAD Pro. Optimized material use by 8% through iterative design process.'
-            });
-            addDynamicItem('experience', {
-                type: 'Summer Intern (Site Supervision)',
-                company: 'Arcadian Builders',
-                dateRange: 'June 2023 - Aug 2023',
-                year: '2023',
-                description: 'Monitored daily construction progress and ensured compliance with safety protocols on a large commercial complex site. Managed RFI documentation.'
-            });
 
-            // Dynamic Achievements
-            addDynamicItem('achievement', {
-                title: 'Best Project Design Award',
-                date: 'University Level Competition',
-                year: '2022',
-                description: 'Led a team of four to design a sustainable bridge structure, winning the annual Civil Engineering design prize.'
-            });
-            addDynamicItem('achievement', {
-                title: 'Scholarship Recipient',
-                date: 'Quantum Dynamics University',
-                year: '2020-2023',
-                description: 'Awarded a merit-based scholarship for maintaining a GPA above 8.0 throughout the undergraduate program.'
-            });
+            // --- Construct Invoice HTML ---
+            let itemsHtml = items.map(item => `
+                <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                    <td class="py-3 px-4 text-sm text-gray-800">${item.description}</td>
+                    <td class="py-3 px-4 text-sm text-center text-gray-500">${item.quantity.toFixed(0)}</td>
+                    <td class="py-3 px-4 text-sm text-right text-gray-500">${formatter.format(item.price)}</td>
+                    <td class="py-3 px-4 text-sm text-right font-medium text-gray-800">${formatter.format(item.total)}</td>
+                </tr>
+            `).join('');
 
-            // Dynamic Education (INSTITUTE NAMES EDITED)
-            addDynamicItem('education', {
-                degree: 'B. Tech. Civil Engineering (8.4 CGPA)',
-                institute: 'Quantum Dynamics University', 
-                dates: '2019 – 2023',
-                year: '2023',
-                description: 'Core coursework included Structural Analysis, Transportation Engineering, and Project Management. Successfully completed a thesis on "Seismic Retrofitting of Existing Structures".'
-            });
-            addDynamicItem('education', {
-                degree: 'HSC (Higher Secondary School Certificate - 85%)',
-                institute: 'Galactic High School', 
-                dates: '2017 – 2019',
-                year: '2019',
-                description: 'Focused on Science Stream (Physics, Chemistry, Mathematics). Developed strong analytical and problem-solving skills.'
+            const invoiceHtml = `
+                <div class="flex justify-between items-start mb-10">
+                    <div>
+                        <div class="text-4xl font-extrabold text-blue-800">INVOICE</div>
+                        <div class="text-xs font-semibold uppercase text-gray-500 mt-1">#${invoiceNumber} | Date: ${invoiceDate}</div>
+                    </div>
+                    <div class="text-right">
+                        ${logoElement}
+                        <!-- Logo/Branding Section -->
+                        <div class="text-lg font-bold text-gray-700 mb-1 mt-2">${businessName}</div>
+                        <div class="text-sm text-gray-500 leading-relaxed">${businessAddress}</div>
+                    </div>
+                </div>
+
+                <!-- Billing Details -->
+                <div class="grid grid-cols-2 gap-8 mb-12 text-sm">
+                    <div>
+                        <h4 class="font-bold text-gray-600 mb-2">BILLED TO:</h4>
+                        <div class="font-medium text-gray-800">${clientName}</div>
+                        <div class="text-gray-500 leading-relaxed">${clientAddress}</div>
+                    </div>
+                    <div class="text-right">
+                        <h4 class="font-bold text-gray-600 mb-2">INVOICE DETAILS:</h4>
+                        <p class="text-gray-700">Invoice No: <span class="font-semibold">${invoiceNumber}</span></p>
+                        <p class="text-gray-700">Invoice Date: <span class="font-semibold">${invoiceDate}</span></p>
+                        <p class="text-gray-700">Payment Due: <span class="font-semibold">30 Days</span></p>
+                    </div>
+                </div>
+
+                <!-- Items Table -->
+                <div class="mb-12 border border-gray-200 rounded-lg overflow-hidden">
+                    <table class="min-w-full bg-white">
+                        <thead>
+                            <tr class="bg-gray-50 border-b border-gray-200">
+                                <th class="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase w-1/2">Description</th>
+                                <th class="py-3 px-4 text-center text-xs font-semibold text-gray-600 uppercase w-1/12">Qty</th>
+                                <th class="py-3 px-4 text-right text-xs font-semibold text-gray-600 uppercase w-1/6">Unit Price</th>
+                                <th class="py-3 px-4 text-right text-xs font-semibold text-gray-600 uppercase w-1/6">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${itemsHtml}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Totals Summary -->
+                <div class="flex justify-end">
+                    <div class="w-full sm:w-1/2 lg:w-1/3 space-y-2">
+                        <div class="flex justify-between text-sm text-gray-700">
+                            <span>Subtotal:</span>
+                            <span class="font-medium">${formatter.format(totals.subtotal)}</span>
+                        </div>
+                        <div class="flex justify-between text-sm text-gray-700 ${totals.discountAmount > 0 ? '' : 'hidden'}">
+                            <span>Discount (${totals.discountRate}%):</span>
+                            <span class="font-medium text-red-600">- ${formatter.format(totals.discountAmount)}</span>
+                        </div>
+                        <div class="flex justify-between text-sm text-gray-700">
+                            <span>Tax (GST ${totals.taxRate}%):</span>
+                            <span class="font-medium">${formatter.format(totals.taxAmount)}</span>
+                        </div>
+                        <div class="flex justify-between items-center pt-4 border-t border-gray-200">
+                            <span class="text-lg font-bold text-gray-800">GRAND TOTAL:</span>
+                            <span class="text-2xl font-extrabold text-blue-600">${formatter.format(totals.grandTotal)}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer / Notes -->
+                <div class="mt-16 pt-6 border-t border-gray-100 text-sm text-gray-500">
+                    <h4 class="font-bold text-gray-600 mb-2">NOTES & PAYMENT TERMS:</h4>
+                    <p>Please make payment within 30 days of the invoice date. All amounts are in Indian Rupees (₹). Thank you for your business!</p>
+                </div>
+            `;
+
+            document.getElementById('invoicePaper').innerHTML = invoiceHtml;
+        }
+
+        /**
+         * Handles the PDF download process using html2canvas and jspdf.
+         */
+        function downloadPDF() {
+            const paper = document.getElementById('invoicePaper');
+            const downloadBtn = document.getElementById('downloadPdfBtn');
+            const loadingMsg = document.getElementById('loadingMessage');
+            const invoiceNumber = document.getElementById('invoiceNumber').value || 'Invoice';
+
+            // Show loading state
+            downloadBtn.disabled = true;
+            downloadBtn.classList.add('opacity-50');
+            loadingMsg.classList.remove('hidden');
+
+            // Store original styles to restore them later
+            const originalWidth = paper.style.width;
+            const originalHeight = paper.style.height;
+            // Set size for consistent PDF output (approx A4 size)
+            paper.style.width = '794px'; 
+            paper.style.height = '1123px'; 
+
+            // Temporarily modify classes for better PDF appearance
+            paper.classList.remove('invoice-paper-shadow');
+            paper.classList.add('border', 'border-gray-200');
+
+            // Capture the content as a canvas
+            html2canvas(paper, {
+                scale: 2, // Higher scale for better resolution
+                useCORS: true, // Necessary for external images (like from a URL)
+                allowTaint: true
+            }).then(canvas => {
+                const imgData = canvas.toDataURL('image/png');
+                // Initialize jsPDF
+                const pdf = new window.jspdf.jsPDF({
+                    orientation: 'portrait',
+                    unit: 'px',
+                    format: [canvas.width, canvas.height] 
+                });
+
+                // Calculate image dimensions to fit the PDF page
+                const imgWidth = pdf.internal.pageSize.getWidth();
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+                pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+                pdf.save(`${invoiceNumber}_INR.pdf`);
+
+                // --- Restore original styles and state ---
+                paper.classList.add('invoice-paper-shadow');
+                paper.classList.remove('border', 'border-gray-200');
+                paper.style.width = originalWidth;
+                paper.style.height = originalHeight;
+                downloadBtn.disabled = false;
+                downloadBtn.classList.remove('opacity-50');
+                loadingMsg.classList.add('hidden');
+            }).catch(error => {
+                console.error("PDF generation failed:", error);
+                // --- Restore original styles and state on failure ---
+                paper.classList.add('invoice-paper-shadow');
+                paper.classList.remove('border', 'border-gray-200');
+                paper.style.width = originalWidth;
+                paper.style.height = originalHeight;
+                downloadBtn.disabled = false;
+                downloadBtn.classList.remove('opacity-50');
+                loadingMsg.classList.add('hidden');
             });
         }
     </script>
