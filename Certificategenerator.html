@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SaaS Professional Certificate Engine</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;700;900&family=Playfair+Display:ital,wght@0,700;0,900;1,600&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --midnight: #001F3F;
+            --gold-main: #D4AF37;
+            --gold-shine: #F1D382;
+            --slate: #4A5568;
+        }
+
+        @page { size: A4; margin: 0; }
+        * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: #111;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        .canvas {
+            width: 210mm;
+            height: 297mm;
+            background: white;
+            padding: 10mm; 
+            position: relative;
+            display: flex;
+        }
+
+        .frame-outer {
+            border: 1pt solid var(--gold-main);
+            width: 100%;
+            height: 100%;
+            padding: 3mm;
+            display: flex;
+        }
+
+        .frame-inner {
+            border: 5pt solid var(--midnight);
+            width: 100%;
+            height: 100%;
+            padding: 10mm 15mm; /* Reduced top/bottom padding to lift content */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            background: radial-gradient(circle at center, #ffffff 0%, #f7f7f7 100%);
+        }
+
+        /* Top-Right Seal */
+        .seal-corner {
+            position: absolute;
+            top: 8mm; /* Pulled up slightly */
+            right: 10mm;
+            width: 40mm;
+            height: 40mm;
+            z-index: 10;
+        }
+
+        /* Brand Block - Tightened */
+        .brand-lockup {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 2mm; /* Lifted up */
+            margin-bottom: 8mm; /* Reduced bottom margin */
+        }
+
+        .logo-container {
+            width: 60mm;
+            height: 50mm;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        #logo-preview {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+
+        .org-name {
+            font-weight: 900;
+            font-size: 18pt;
+            letter-spacing: 5pt;
+            color: var(--midnight);
+            text-transform: uppercase;
+            text-align: center;
+            margin-top: -3pt;
+            line-height: 1;
+        }
+
+        /* Typography */
+        h1.title {
+            font-family: 'Playfair Display', serif;
+            font-weight: 900;
+            font-size: 58pt; /* Slightly reduced */
+            color: var(--midnight);
+            margin: 2mm 0 1mm 0;
+            text-transform: uppercase;
+        }
+
+        .subtitle {
+            width: 100%;
+            text-align: center;
+            white-space: nowrap;
+            font-size: 13pt;
+            letter-spacing: 7pt;
+            color: var(--gold-main);
+            text-transform: uppercase;
+            font-weight: 400;
+            margin-bottom: 8mm; /* Reduced space */
+        }
+
+        .presentation-line {
+            font-family: 'Playfair Display'; 
+            font-style: italic; 
+            font-size: 15pt; 
+            color: var(--slate); 
+            margin-bottom: 3mm;
+        }
+
+        /* Adjusted Recipient Name Size */
+        .name-holder {
+            font-family: 'Playfair Display', serif;
+            font-weight: 900;
+            font-size: 42pt; /* Reduced from 52pt for better fit */
+            margin: 2mm 0;
+            text-align: center;
+            width: 85%;
+            border-bottom: 1pt solid #eee;
+            padding-bottom: 2pt;
+        }
+
+        .name-holder:not(:focus) {
+            background: linear-gradient(to right, var(--midnight), #B8860B);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .desc-text {
+            max-width: 145mm;
+            font-size: 11.5pt;
+            line-height: 1.6;
+            color: var(--slate);
+            text-align: center;
+            margin-bottom: 10mm; /* Compressed for bottom space */
+        }
+
+        /* Footer - Safety space ensured */
+        .footer {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            margin-top: auto; /* Uses all remaining space */
+            padding: 0 5mm 8mm 5mm; /* Safe distance from bottom frame */
+        }
+
+        .sig-container {
+            width: 58mm;
+            text-align: center;
+        }
+
+        .sig-line {
+            border-top: 1.5pt solid var(--midnight);
+            padding-top: 5pt;
+            font-weight: 700;
+            font-size: 9pt;
+            color: var(--midnight);
+            text-transform: uppercase;
+        }
+
+        [contenteditable="true"]:focus { outline: none; background: rgba(0,0,0,0.01); }
+
+        @media print {
+            body { background: white; }
+            .canvas { box-shadow: none; padding: 0; margin: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="canvas">
+    <div class="frame-outer">
+        <div class="frame-inner">
+            
+            <div class="seal-corner">
+                <svg viewBox="0 0 100 100">
+                    <defs>
+                        <linearGradient id="medalGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:#D4AF37" />
+                            <stop offset="50%" style="stop-color:#F1D382" />
+                            <stop offset="100%" style="stop-color:#B8860B" />
+                        </linearGradient>
+                    </defs>
+                    <path d="M35 50 L25 92 L50 80 L75 92 L65 50" fill="#800000" />
+                    <circle cx="50" cy="45" r="34" fill="url(#medalGrad)" stroke="#B8860B" stroke-width="1" />
+                    <circle cx="50" cy="45" r="28" fill="none" stroke="white" stroke-width="0.5" stroke-dasharray="2,1" />
+                    <text x="50" y="48" font-family="Montserrat" font-size="6" font-weight="900" text-anchor="middle" fill="#5A4000">OFFICIAL</text>
+                    <text x="50" y="54" font-family="Montserrat" font-size="4" font-weight="700" text-anchor="middle" fill="#5A4000">VERIFIED GRADUATE</text>
+                </svg>
+            </div>
+
+            <div class="brand-lockup">
+                <input type="file" id="upload-logo" hidden accept="image/*">
+                <div class="logo-container" onclick="document.getElementById('upload-logo').click()">
+                    <img id="logo-preview" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23001F3F'%3E%3Cpath d='M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5'/%3E%3C/svg%3E" alt="Logo">
+                </div>
+                <div class="org-name" contenteditable="true">Organization Name</div>
+            </div>
+
+            <h1 class="title" contenteditable="true">Certificate</h1>
+            <div class="subtitle" contenteditable="true">of professional achievement</div>
+
+            <div class="presentation-line">
+                This honor is officially bestowed upon
+            </div>
+            
+            <div class="name-holder" contenteditable="true">Recipient Name</div>
+
+            <p class="desc-text" contenteditable="true">
+                For the successful completion of the executive requirements and demonstrating exceptional proficiency in <b>SaaS Systems Architecture and Design Management</b> during the term of 2025-2026.
+            </p>
+
+            <div class="footer">
+                <div class="sig-container">
+                    <div class="sig-line" contenteditable="true">Director Signature</div>
+                    <div style="font-size: 7.5pt; color: var(--slate); text-transform: uppercase; margin-top: 2pt;">Managing Authority</div>
+                </div>
+                
+                <div style="text-align: center; align-self: flex-end;">
+                    <div style="font-weight: 900; color: var(--gold-main); font-size: 8.5pt; letter-spacing: 2pt;">DATE ISSUED</div>
+                    <div style="font-size: 10.5pt; color: var(--midnight);" contenteditable="true">January 04, 2026</div>
+                </div>
+
+                <div class="sig-container">
+                    <div class="sig-line" contenteditable="true">Registrar Signature</div>
+                    <div style="font-size: 7.5pt; color: var(--slate); text-transform: uppercase; margin-top: 2pt;">Official Certification</div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('upload-logo').addEventListener('change', function(e) {
+        if (e.target.files && e.target.files[0]) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                document.getElementById('logo-preview').src = event.target.result;
+            };
+            reader.readAsDataURL(e.target.files[0]);
+        }
+    });
+</script>
+
+</body>
+</html>
